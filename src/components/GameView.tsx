@@ -1,12 +1,8 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, Easing, Platform, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Platform, TouchableOpacity } from 'react-native';
 import Svg, { Rect, Circle, Path, Ellipse, G } from 'react-native-svg';
 import { GameStage, PitchType } from '../types/types';
+import StadiumBackground from './StadiumBackground';
 
 interface GameViewProps {
   stage: GameStage;
@@ -19,8 +15,16 @@ interface GameViewProps {
   onSwingResult: (isHit: boolean, distance?: number) => void;
 }
 
-const CANVAS_WIDTH = 380;
+const CANVAS_WIDTH  = 380;
 const CANVAS_HEIGHT = 480;
+
+// Pitcher on mound (center of canvas, ~55% down)
+const DEFAULT_PITCHER_X = CANVAS_WIDTH  * 0.50;
+const DEFAULT_PITCHER_Y = CANVAS_HEIGHT * 0.52;
+
+// Home plate (center, ~82% down)
+const DEFAULT_PLATE_X = CANVAS_WIDTH  * 0.50;
+const DEFAULT_PLATE_Y = CANVAS_HEIGHT * 0.82;
 
 export default function GameView({
   stage,
@@ -35,19 +39,18 @@ export default function GameView({
   const pitchProgress = useRef(new Animated.Value(0)).current;
   const swingRotation = useRef(new Animated.Value(-50)).current;
 
-  // Real-time calibrateable state variables for pitch and mounds
-  const [pitcherX, setPitcherX] = useState<number>(CANVAS_WIDTH * 0.50); // perfectly center
-  const [pitcherY, setPitcherY] = useState<number>(CANVAS_HEIGHT * 0.77); // on mound (perfect field perspective)
-  const [plateX, setPlateX] = useState<number>(CANVAS_WIDTH * 0.50); // center
-  const [plateY, setPlateY] = useState<number>(CANVAS_HEIGHT * 0.94); // front batting (resting on grass turf)
+  const [pitcherX, setPitcherX] = useState<number>(DEFAULT_PITCHER_X);
+  const [pitcherY, setPitcherY] = useState<number>(DEFAULT_PITCHER_Y);
+  const [plateX,   setPlateX]   = useState<number>(DEFAULT_PLATE_X);
+  const [plateY,   setPlateY]   = useState<number>(DEFAULT_PLATE_Y);
 
   const [calibratorVisible, setCalibratorVisible] = useState<boolean>(false);
 
-  const [ballX, setBallX] = useState<number>(0);
-  const [ballY, setBallY] = useState<number>(0);
+  const [ballX,     setBallX]     = useState<number>(0);
+  const [ballY,     setBallY]     = useState<number>(0);
   const [ballScale, setBallScale] = useState<number>(0);
 
-  // Handle active pitcher release triggers 
+  // ── Pitch animation ──────────────────────────────────────────────────
   useEffect(() => {
     if (stage === GameStage.InFlight) {
       pitchProgress.setValue(0);
@@ -57,69 +60,62 @@ export default function GameView({
         easing: Easing.linear,
         useNativeDriver: false,
       }).start(({ finished }) => {
-        if (finished) {
-          onSwingResult(false);
-        }
+        if (finished) onSwingResult(false);
       });
     } else {
       pitchProgress.stopAnimation();
     }
   }, [stage]);
 
-  // Map Animated pitch values into 3D-to-2D coordinates
+  // ── Ball position listener ───────────────────────────────────────────
   useEffect(() => {
     const listenerId = pitchProgress.addListener(({ value }) => {
       const startX = pitcherX;
-      const startY = pitcherY - 14; // ball starts at the pitcher's release arm height
-      const endX = plateX;
-      const endY = plateY - 42;    // ball crosses exactly at hip-level inside strike-zone
+      const startY = pitcherY - 10;
+      const endX   = plateX;
+      const endY   = plateY - 30;
 
       const currentX = startX + (endX - startX) * value;
       const currentY = startY + (endY - startY) * value;
-      const scale = Math.max(2.5, 22 * value); // grows dynamically to give 3D depth
+      const scale    = 3 + 11 * value;
 
       setBallX(currentX);
       setBallY(currentY);
       setBallScale(scale);
     });
-
-    return () => {
-      pitchProgress.removeListener(listenerId);
-    };
+    return () => pitchProgress.removeListener(listenerId);
   }, [pitchProgress, pitcherX, pitcherY, plateX, plateY]);
 
-  // React Native bat swing rotations handler
+  // ── Swing handler ────────────────────────────────────────────────────
   useEffect(() => {
-    if (triggerSwing) {
-      setTriggerSwing(false);
-      swingRotation.setValue(-50);
-      
-      Animated.timing(swingRotation, {
-        toValue: 120,
-        duration: 150,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) {
-          Animated.timing(swingRotation, {
-            toValue: -50,
-            duration: 150,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }).start();
-        }
-      });
+    if (!triggerSwing) return;
+    setTriggerSwing(false);
 
-      // Test Contact sweet spot timing actively
-      const p = (pitchProgress as any).__getValue();
-      const isPerfectContact = p >= 0.86 && p <= 0.98;
-
-      if (isPerfectContact && stage === GameStage.InFlight) {
-        const basePower = blowStrength; 
-        const randomBonus = Math.floor(Math.random() * 80);
-        const distance = Math.round(150 + (basePower * 2.8) + randomBonus);
-        onSwingResult(true, distance);
+    swingRotation.setValue(-50);
+    Animated.timing(swingRotation, {
+      toValue: 120,
+      duration: 150,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        Animated.timing(swingRotation, {
+          toValue: -50,
+          duration: 150,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }).start();
       }
+    });
+
+    const p = (pitchProgress as any).__getValue();
+    const isPerfectContact = p >= 0.86 && p <= 0.98;
+
+    if (isPerfectContact && stage === GameStage.InFlight) {
+      const basePower   = blowStrength;
+      const randomBonus = Math.floor(Math.random() * 80);
+      const distance    = Math.round(150 + basePower * 2.8 + randomBonus);
+      onSwingResult(true, distance);
     }
   }, [triggerSwing, blowStrength, pitcherX, pitcherY, plateX, plateY, stage]);
 
@@ -130,93 +126,170 @@ export default function GameView({
 
   const isPitchingView =
     stage === GameStage.PitcherWindup ||
-    stage === GameStage.InFlight ||
-    stage === GameStage.ResultStrike ||
-    stage === GameStage.ResultBall ||
-    stage === GameStage.ResultFoul ||
+    stage === GameStage.InFlight      ||
+    stage === GameStage.ResultStrike  ||
+    stage === GameStage.ResultBall    ||
+    stage === GameStage.ResultFoul    ||
     stage === GameStage.Resetting;
+
+  const fieldDepth  = plateY - pitcherY;
+  const figureScale = Math.max(0.55, fieldDepth / 110);
+
+  const pitcherFigH  = Math.round(22 * figureScale);
+  const pitcherFigW  = Math.round(10 * figureScale);
+  const pitcherHeadR = Math.round(4  * figureScale);
+
+  const batterFigH   = Math.round(26 * figureScale);
+  const batterFigW   = Math.round(12 * figureScale);
+  const batterHeadR  = Math.round(5  * figureScale);
 
   return (
     <View style={styles.outerContainer}>
       <View style={styles.canvasWrapper}>
-        {/* Real Stadium Image Background in React Native CLI */}
-        <Image
-          source={require('../assets/images/stadium_background_1779455268669.png')}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
 
+        {/* ── Custom SVG stadium background ──────────────────────── */}
+        <StadiumBackground width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />
+
+        {/* ── SVG game overlay ───────────────────────────────────── */}
         <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT} style={StyleSheet.absoluteFill}>
-          {isPitchingView ? (
+          {isPitchingView && (
             <G>
-              {/* Semi-transparent baseball grass guide line paths to subtly converge on the background field */}
-              <Path
-                d={`M ${plateX} ${pitcherY} L ${CANVAS_WIDTH * 0.95} ${CANVAS_HEIGHT} L ${CANVAS_WIDTH * 0.05} ${CANVAS_HEIGHT} Z`}
-                fill="none"
+              {/* Pitcher shadow */}
+              <Ellipse
+                cx={pitcherX}
+                cy={pitcherY + pitcherFigH * 0.55}
+                rx={pitcherFigW * 1.4}
+                ry={pitcherFigW * 0.45}
+                fill="rgba(0,0,0,0.35)"
               />
-
-              {/* White pentagonal baseball Home Base Plate */}
-              <Path
-                d={`M ${plateX} ${plateY} L ${plateX + 14} ${plateY + 8} L ${plateX + 8} ${plateY + 18} L ${plateX - 8} ${plateY + 18} L ${plateX - 14} ${plateY + 8} Z`}
-                fill="rgba(255, 255, 255, 0.9)"
-                stroke="#475569"
-                strokeWidth="1.5"
-              />
-
-              {/* Playable strike zone frame aligned perfectly with base plate dimensions */}
+              {/* Pitcher jersey */}
               <Rect
-                x={plateX - 25}
-                y={plateY - 110}
-                width="50"
-                height="80"
-                stroke="rgba(6, 182, 212, 0.65)"
-                strokeWidth="1.5"
-                fill="none"
+                x={pitcherX - pitcherFigW / 2}
+                y={pitcherY - pitcherFigH * 0.1}
+                width={pitcherFigW}
+                height={pitcherFigH * 0.65}
+                rx={pitcherFigW * 0.3}
+                fill="#ef4444"
+                stroke="#991b1b"
+                strokeWidth="1"
+              />
+              {/* Pitcher head */}
+              <Circle
+                cx={pitcherX}
+                cy={pitcherY - pitcherFigH * 0.18}
+                r={pitcherHeadR}
+                fill="#fbcfe8"
+                stroke="#1e293b"
+                strokeWidth="0.8"
+              />
+              {/* Glove */}
+              <Circle
+                cx={pitcherX - pitcherFigW * 0.9}
+                cy={pitcherY + pitcherFigH * 0.05}
+                r={pitcherHeadR * 0.75}
+                fill="#b45309"
               />
 
-              {/* Pitcher Mound shadow ellipse */}
-              <Ellipse cx={pitcherX} cy={pitcherY + 4} rx="20" ry="5" fill="rgba(0, 0, 0, 0.35)" />
+              {/* Strike zone */}
+              <Rect
+                x={plateX - 20}
+                y={plateY - 80}
+                width="40"
+                height="60"
+                stroke="rgba(6,182,212,0.60)"
+                strokeWidth="1.5"
+                fill="rgba(6,182,212,0.04)"
+                strokeDasharray="4,3"
+              />
 
-              {/* Detailed Pitcher jersey, skin and gear */}
-              <Circle cx={pitcherX} cy={pitcherY - 22} r="5" fill="#fbcfe8" stroke="#1e293b" strokeWidth="1" />
-              <Rect x={pitcherX - 7} y={pitcherY - 17} width="14" height="17" rx="2" fill="#ef4444" stroke="#991b1b" strokeWidth="1" />
-              <Rect x={pitcherX - 6} y={pitcherY} width="12" height="5" fill="#ffffff" />
-              {/* Pitcher glove element */}
-              <Circle cx={pitcherX - 9} cy={pitcherY - 10} r="3" fill="#b45309" />
+              {/* Home plate pentagon */}
+              <Path
+                d={`M ${plateX} ${plateY}
+                    L ${plateX + 11} ${plateY + 6}
+                    L ${plateX + 7}  ${plateY + 14}
+                    L ${plateX - 7}  ${plateY + 14}
+                    L ${plateX - 11} ${plateY + 6} Z`}
+                fill="rgba(255,255,255,0.90)"
+                stroke="#475569"
+                strokeWidth="1.2"
+              />
 
-              {/* Flowing pitch baseball sphere */}
+              {/* Batter shadow */}
+              <Ellipse
+                cx={plateX + batterFigW * 0.9}
+                cy={plateY - batterFigH * 0.1 + batterFigH * 0.55}
+                rx={batterFigW * 1.3}
+                ry={batterFigW * 0.4}
+                fill="rgba(0,0,0,0.30)"
+              />
+              {/* Batter torso */}
+              <Rect
+                x={plateX + batterFigW * 0.35}
+                y={plateY - batterFigH * 0.1}
+                width={batterFigW}
+                height={batterFigH * 0.62}
+                rx={batterFigW * 0.3}
+                fill="#0284c7"
+                stroke="#0369a1"
+                strokeWidth="1"
+              />
+              {/* Batter head */}
+              <Circle
+                cx={plateX + batterFigW * 0.85}
+                cy={plateY - batterFigH * 0.28}
+                r={batterHeadR}
+                fill="#fed7aa"
+                stroke="#0284c7"
+                strokeWidth="1"
+              />
+
+              {/* Flying baseball */}
               {stage === GameStage.InFlight && (
                 <G>
                   <Circle cx={ballX} cy={ballY} r={ballScale} fill="#ffffff" />
-                  <Path d={`M ${ballX - ballScale * 0.4} ${ballY - ballScale * 0.6} Q ${ballX} ${ballY} ${ballX - ballScale * 0.4} ${ballY + ballScale * 0.6}`} stroke="#ef4444" strokeWidth="1" fill="none" />
-                  <Path d={`M ${ballX + ballScale * 0.4} ${ballY - ballScale * 0.6} Q ${ballX} ${ballY} ${ballX + ballScale * 0.4} ${ballY + ballScale * 0.6}`} stroke="#ef4444" strokeWidth="1" fill="none" />
+                  <Path
+                    d={`M ${ballX - ballScale * 0.4} ${ballY - ballScale * 0.55}
+                        Q ${ballX} ${ballY}
+                          ${ballX - ballScale * 0.4} ${ballY + ballScale * 0.55}`}
+                    stroke="#ef4444" strokeWidth="0.9" fill="none"
+                  />
+                  <Path
+                    d={`M ${ballX + ballScale * 0.4} ${ballY - ballScale * 0.55}
+                        Q ${ballX} ${ballY}
+                          ${ballX + ballScale * 0.4} ${ballY + ballScale * 0.55}`}
+                    stroke="#ef4444" strokeWidth="0.9" fill="none"
+                  />
                 </G>
               )}
             </G>
-          ) : (
+          )}
+
+          {!isPitchingView && (
             <G>
-              {/* Outfield view semi-transparent layouts */}
-              <Rect x="0" y={CANVAS_HEIGHT * 0.62} width={CANVAS_WIDTH} height={CANVAS_HEIGHT * 0.38} fill="rgba(6, 78, 59, 0.35)" />
-              <Rect x="0" y={CANVAS_HEIGHT * 0.62 + 15} width={CANVAS_WIDTH} height="8" fill="rgba(180, 83, 9, 0.35)" />
+              <Rect
+                x="0" y={CANVAS_HEIGHT * 0.62}
+                width={CANVAS_WIDTH} height={CANVAS_HEIGHT * 0.38}
+                fill="rgba(6,78,59,0.20)"
+              />
             </G>
           )}
         </Svg>
 
+        {/* ── Animated bat ───────────────────────────────────────── */}
         {isPitchingView && (
-          <View style={[styles.batterWrapper, { left: plateX - 54, top: plateY - 78 }]}>
-            <View style={styles.batterHead} />
-            <View style={styles.batterTorso} />
-            
-            {/* Batter legs and shoes standing on dirt */}
-            <View style={styles.batterLegsContainer}>
-              <View style={styles.batterLegLeft} />
-              <View style={styles.batterLegRight} />
-            </View>
-
-            <Animated.View style={[styles.woodenBat, { transform: [{ rotate: spinAngle }] }]} />
-          </View>
+          <Animated.View
+            style={[
+              styles.woodenBat,
+              {
+                left: plateX + batterFigW * 0.35 - 3,
+                top:  plateY - batterFigH * 0.1 - 20,
+                transform: [{ rotate: spinAngle }],
+              },
+            ]}
+          />
         )}
 
+        {/* ── Outfield markers ───────────────────────────────────── */}
         {!isPitchingView && (
           <>
             <Text style={styles.svgLabelLeft}>LF 330 FT</Text>
@@ -225,67 +298,79 @@ export default function GameView({
           </>
         )}
 
-        {/* Dynamic banner alerts */}
+        {/* ── Announcement banner ────────────────────────────────── */}
         <View style={styles.bannerWrapper}>
           <Text style={styles.bannerText}>{announceText.toUpperCase()}</Text>
         </View>
       </View>
 
-      {/* Dynamic Calibration Interface to match the stadium image mound & base */}
+      {/* ── Calibration panel ──────────────────────────────────────── */}
       <View style={styles.tuningOuterPanel}>
-        <TouchableOpacity 
-          id="btn-calibrate-toggle"
+        <TouchableOpacity
           onPress={() => setCalibratorVisible(!calibratorVisible)}
           style={styles.calibrateHeaderBtn}
         >
           <Text style={styles.calibrateHeaderTxt}>
-            {calibratorVisible ? '👁️ HIDE CALIBRATOR' : '⚙️ CALIBRATE PLAYER POSITIONS'}
+            {calibratorVisible ? '▲ HIDE CALIBRATOR' : '⚙ CALIBRATE PLAYER POSITIONS'}
           </Text>
         </TouchableOpacity>
 
         {calibratorVisible && (
           <View style={styles.controlsTuningGrid}>
             <Text style={styles.calibInstruction}>
-              Tap arrows to position Pitcher & Batter perfectly on your image's pitch.
+              Tap arrows to position Pitcher and Batter on the mound and plate.
             </Text>
 
-            {/* Pitcher adjustments */}
             <View style={styles.tuningSection}>
               <Text style={styles.sectionLabel}>
                 PITCHER: ({Math.round(pitcherX)}, {Math.round(pitcherY)})
               </Text>
               <View style={styles.arrowsRow}>
-                <TouchableOpacity onPress={() => setPitcherX(p => p - 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>◀</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setPitcherX(p => p - 4)} style={styles.arrowBtn}>
+                  <Text style={styles.arrowLabel}>◀</Text>
+                </TouchableOpacity>
                 <View style={styles.verticalArrows}>
-                  <TouchableOpacity onPress={() => setPitcherY(p => p - 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▲</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setPitcherY(p => p + 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▼</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPitcherY(p => p - 4)} style={styles.arrowBtn}>
+                    <Text style={styles.arrowLabel}>▲</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPitcherY(p => p + 4)} style={styles.arrowBtn}>
+                    <Text style={styles.arrowLabel}>▼</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setPitcherX(p => p + 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▶</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setPitcherX(p => p + 4)} style={styles.arrowBtn}>
+                  <Text style={styles.arrowLabel}>▶</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Batter / Plate adjustments */}
             <View style={styles.tuningSection}>
               <Text style={styles.sectionLabel}>
                 BATTER / HOME: ({Math.round(plateX)}, {Math.round(plateY)})
               </Text>
               <View style={styles.arrowsRow}>
-                <TouchableOpacity onPress={() => setPlateX(p => p - 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>◀</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setPlateX(p => p - 4)} style={styles.arrowBtn}>
+                  <Text style={styles.arrowLabel}>◀</Text>
+                </TouchableOpacity>
                 <View style={styles.verticalArrows}>
-                  <TouchableOpacity onPress={() => setPlateY(p => p - 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▲</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setPlateY(p => p + 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▼</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPlateY(p => p - 4)} style={styles.arrowBtn}>
+                    <Text style={styles.arrowLabel}>▲</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setPlateY(p => p + 4)} style={styles.arrowBtn}>
+                    <Text style={styles.arrowLabel}>▼</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => setPlateX(p => p + 4)} style={styles.arrowBtn}><Text style={styles.arrowLabel}>▶</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => setPlateX(p => p + 4)} style={styles.arrowBtn}>
+                  <Text style={styles.arrowLabel}>▶</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Reset Button */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => {
-                setPitcherX(CANVAS_WIDTH * 0.50);
-                setPitcherY(CANVAS_HEIGHT * 0.77);
-                setPlateX(CANVAS_WIDTH * 0.50);
-                setPlateY(CANVAS_HEIGHT * 0.94);
+                setPitcherX(DEFAULT_PITCHER_X);
+                setPitcherY(DEFAULT_PITCHER_Y);
+                setPlateX(DEFAULT_PLATE_X);
+                setPlateY(DEFAULT_PLATE_Y);
               }}
               style={styles.resetValuesBtn}
             >
@@ -307,62 +392,17 @@ const styles = StyleSheet.create({
   canvasWrapper: {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    backgroundColor: '#020617',
+    backgroundColor: '#020b1a',
     borderRadius: 8,
     position: 'relative',
     overflow: 'hidden',
   },
-  batterWrapper: {
-    position: 'absolute',
-    width: 80,
-    height: 100,
-    alignItems: 'center',
-  },
-  batterHead: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#fed7aa',
-    borderWidth: 1.5,
-    borderColor: '#0284c7',
-    marginBottom: 2,
-  },
-  batterTorso: {
-    width: 20,
-    height: 40,
-    borderRadius: 6,
-    backgroundColor: '#0284c7',
-    borderWidth: 1.5,
-    borderColor: '#0369a1',
-  },
-  batterLegsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: 16,
-    height: 22,
-    marginTop: -1,
-  },
-  batterLegLeft: {
-    width: 6,
-    height: 22,
-    backgroundColor: '#cbd5e1', // white/grey baseball custom pants
-    borderBottomWidth: 3,
-    borderBottomColor: '#1e293b', // black athletic cleats details
-  },
-  batterLegRight: {
-    width: 6,
-    height: 22,
-    backgroundColor: '#cbd5e1', // white/grey baseball custom pants
-    borderBottomWidth: 3,
-    borderBottomColor: '#1e293b', // black athletic cleats details
-  },
   woodenBat: {
     position: 'absolute',
-    width: 6,
-    height: 62,
+    width: 5,
+    height: 52,
     backgroundColor: '#d97706',
     borderRadius: 3,
-    top: 25,
     transformOrigin: 'top center',
     borderWidth: 1,
     borderColor: '#78350f',
@@ -372,8 +412,8 @@ const styles = StyleSheet.create({
     bottom: 20,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(7, 11, 22, 0.9)',
-    borderColor: '#27354a',
+    backgroundColor: 'rgba(2,11,26,0.92)',
+    borderColor: '#1e3a5f',
     borderWidth: 1.5,
     borderRadius: 6,
     paddingVertical: 8,
@@ -414,7 +454,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: CANVAS_WIDTH,
     backgroundColor: '#0c1220',
-    borderColor: '#27354a',
+    borderColor: '#1e3a5f',
     borderWidth: 1.5,
     borderRadius: 8,
     padding: 8,
@@ -422,7 +462,7 @@ const styles = StyleSheet.create({
   calibrateHeaderBtn: {
     paddingVertical: 6,
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(59,130,246,0.10)',
     borderRadius: 4,
   },
   calibrateHeaderTxt: {
@@ -435,7 +475,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#27354a',
+    borderTopColor: '#1e3a5f',
   },
   calibInstruction: {
     fontSize: 9,
@@ -480,8 +520,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   resetValuesBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderColor: 'rgba(239,68,68,0.40)',
     borderWidth: 1,
     borderRadius: 4,
     paddingVertical: 6,
@@ -495,4 +535,3 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier-Bold' : 'monospace',
   },
 });
-

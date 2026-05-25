@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { GameStats, PitchType } from '../types/types';
@@ -16,83 +11,94 @@ interface ScoreBoardProps {
 export default function ScoreBoard({ stats, pitchSpeed, pitchType }: ScoreBoardProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.metricsWrapper}>
-        {/* Score Column */}
-        <View style={styles.metricColumn}>
-          <Text style={styles.metricLabel}>SCORE</Text>
-          <Text style={[styles.metricValue, { color: '#06b6d4' }]}>
-            {stats.score}
-          </Text>
-        </View>
-
-        {/* Homerun Column */}
-        <View style={styles.metricColumn}>
-          <Text style={styles.metricLabel}>HOMERS</Text>
-          <Text style={[styles.metricValue, { color: '#ef4444' }]}>
-            {stats.homeruns}
-          </Text>
-        </View>
-
-        {/* Streak Column */}
-        <View style={styles.metricColumn}>
-          <Text style={styles.metricLabel}>STREAK</Text>
-          <Text style={[styles.metricValue, { color: '#f59e0b' }]}>
-            {stats.streak}
-          </Text>
-        </View>
+      <View style={styles.row}>
+        <StatCell label="SCORE" value={stats.score} accent />
+        <StatCell label="HR" value={stats.homeruns} />
+        <StatCell label="HITS" value={stats.singles} />
+        <StatCell label="STREAK" value={stats.streak} accent />
       </View>
-
-      {/* Speed Radar Panel */}
-      <View style={styles.radarWrapper}>
-        <Text style={styles.radarText}>
-          PITCH: {pitchSpeed} MPH {pitchType?.toUpperCase()}
-        </Text>
+      <View style={styles.divider} />
+      <View style={styles.row}>
+        <StatCell label="STRIKES" value={stats.strikes} warn />
+        <StatCell label="BALLS" value={stats.balls} />
+        <View style={styles.pitchCell}>
+          <Text style={styles.pitchSpeed}>{pitchSpeed} MPH</Text>
+          <Text style={styles.pitchType}>{pitchType.toUpperCase()}</Text>
+        </View>
+        <StatCell label="MAX FT" value={stats.maxDistance} />
       </View>
+    </View>
+  );
+}
+
+function StatCell({ label, value, accent, warn }: { label: string; value: number; accent?: boolean; warn?: boolean }) {
+  return (
+    <View style={styles.statCell}>
+      <Text style={[styles.statValue, accent && styles.accentValue, warn && styles.warnValue]}>
+        {value}
+      </Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0c1220',
-    borderColor: '#27354a',
+    width: 380,
+    backgroundColor: '#060e1e',
+    borderColor: '#1e3a5f',
     borderWidth: 1.5,
     borderRadius: 8,
-    padding: 10,
-    width: '100%',
-    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
-  metricsWrapper: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  metricColumn: {
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  metricLabel: {
-    fontSize: 9,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  divider: {
+    height: 1,
+    backgroundColor: '#1e3a5f',
+    marginVertical: 6,
+  },
+  statCell: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#94a3b8',
-    marginBottom: 2,
-  },
-  metricValue: {
-    fontSize: 16,
+    color: '#e2e8f0',
     fontFamily: Platform.OS === 'ios' ? 'Courier-Bold' : 'monospace',
-    fontWeight: 'bold',
   },
-  radarWrapper: {
-    borderTopColor: '#1e293b',
-    borderTopWidth: 1,
-    paddingTop: 4,
-    alignItems: 'center',
+  accentValue: {
+    color: '#38bdf8',
   },
-  radarText: {
-    fontSize: 10,
-    color: '#94a3b8',
+  warnValue: {
+    color: '#f87171',
+  },
+  statLabel: {
+    fontSize: 8,
+    color: '#64748b',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 1,
+  },
+  pitchCell: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  pitchSpeed: {
+    fontSize: 16,
     fontWeight: 'bold',
+    color: '#facc15',
+    fontFamily: Platform.OS === 'ios' ? 'Courier-Bold' : 'monospace',
+  },
+  pitchType: {
+    fontSize: 8,
+    color: '#64748b',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    marginTop: 1,
   },
 });

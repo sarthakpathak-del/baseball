@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, StatusBar, Dimensions } from 'react-native';
 import { GameStage, PitchType, GameStats } from './src/types/types';
