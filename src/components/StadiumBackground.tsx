@@ -21,21 +21,14 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
   const W = width;
   const H = height;
 
-  // Horizon sits at ~40% down
   const horizon = H * 0.40;
-  // Outfield grass starts at horizon
   const grassStart = horizon;
-  // Infield dirt diamond vanishing point (same as pitcher's mound area)
   const vp = { x: W * 0.5, y: H * 0.38 };
 
-  // Field corners at bottom of canvas
   const fieldLeft  = -W * 0.1;
   const fieldRight = W * 1.1;
   const fieldBottom = H;
 
-  // ── Infield dirt region (trapezoid perspective) ──────────────────────
-  // The diamond viewed from slightly above home plate
-  // Home plate at bottom-center, outfield at top-center
   const dirtTrapezoid = [
     `${W * 0.08},${H * 0.98}`,   // bottom-left
     `${W * 0.92},${H * 0.98}`,   // bottom-right
@@ -43,14 +36,10 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
     `${W * 0.28},${H * 0.44}`,   // top-left
   ].join(' ');
 
-  // ── Base paths ───────────────────────────────────────────────────────
-  // Bases in perspective: first base (right), second base (top-center), third base (left)
   const homeX  = W * 0.50;  const homeY  = H * 0.87;
   const firstX = W * 0.73;  const firstY = H * 0.65;
   const secondX = W * 0.50; const secondY = H * 0.46;
   const thirdX = W * 0.27;  const thirdY = H * 0.65;
-
-  // Baseline paths
   const baselinePath = `
     M ${homeX} ${homeY}
     L ${firstX} ${firstY}
@@ -58,40 +47,30 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
     L ${thirdX} ${thirdY}
     Z
   `;
-
-  // Pitcher's mound center
   const moundX = W * 0.50;
   const moundY = H * 0.55;
 
   return (
     <Svg width={W} height={H} style={{ position: 'absolute', top: 0, left: 0 }}>
       <Defs>
-        {/* Night sky gradient */}
         <LinearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%"   stopColor="#020b1a" stopOpacity="1" />
           <Stop offset="40%"  stopColor="#03183a" stopOpacity="1" />
           <Stop offset="100%" stopColor="#071e4a" stopOpacity="1" />
         </LinearGradient>
-
-        {/* Outfield grass gradient */}
         <LinearGradient id="grassGrad" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%"   stopColor="#1a5c1a" stopOpacity="1" />
           <Stop offset="100%" stopColor="#2d8c2d" stopOpacity="1" />
         </LinearGradient>
-
-        {/* Infield dirt gradient */}
         <LinearGradient id="dirtGrad" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%"   stopColor="#7a4820" stopOpacity="1" />
           <Stop offset="100%" stopColor="#c47a35" stopOpacity="1" />
         </LinearGradient>
-
-        {/* Near grass (foreground wedges) gradient */}
         <LinearGradient id="nearGrassGrad" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%"   stopColor="#2d8c2d" stopOpacity="1" />
           <Stop offset="100%" stopColor="#3aaa3a" stopOpacity="1" />
         </LinearGradient>
 
-        {/* Stadium light glow */}
         <RadialGradient id="lightGlowL" cx="30%" cy="0%" r="30%">
           <Stop offset="0%"  stopColor="#a8d8ff" stopOpacity="0.55" />
           <Stop offset="100%" stopColor="#a8d8ff" stopOpacity="0" />
@@ -101,52 +80,39 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
           <Stop offset="100%" stopColor="#a8d8ff" stopOpacity="0" />
         </RadialGradient>
 
-        {/* Field ambient light from stadium lights */}
         <RadialGradient id="fieldLight" cx="50%" cy="42%" r="70%">
           <Stop offset="0%"   stopColor="#ffffff" stopOpacity="0.12" />
           <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </RadialGradient>
-
-        {/* Mound highlight */}
         <RadialGradient id="moundGrad" cx="50%" cy="40%" r="50%">
           <Stop offset="0%"   stopColor="#d4935a" stopOpacity="1" />
           <Stop offset="100%" stopColor="#9a5520" stopOpacity="1" />
         </RadialGradient>
       </Defs>
-
-      {/* ── Sky ── */}
       <Rect x="0" y="0" width={W} height={H} fill="url(#skyGrad)" />
 
-      {/* ── Light glow from stadium poles ── */}
       <Rect x="0" y="0" width={W} height={H * 0.5} fill="url(#lightGlowL)" />
       <Rect x="0" y="0" width={W} height={H * 0.5} fill="url(#lightGlowR)" />
 
-      {/* ── Clouds (dark navy) ── */}
       <G opacity="0.7">
-        {/* Left cloud cluster */}
         <Ellipse cx={W * 0.12} cy={H * 0.08} rx={W * 0.10} ry={H * 0.035} fill="#0d2a5a" />
         <Ellipse cx={W * 0.08} cy={H * 0.075} rx={W * 0.07} ry={H * 0.03} fill="#0d2a5a" />
         <Ellipse cx={W * 0.18} cy={H * 0.07} rx={W * 0.06} ry={H * 0.025} fill="#0d2a5a" />
 
-        {/* Right cloud cluster */}
         <Ellipse cx={W * 0.88} cy={H * 0.07} rx={W * 0.10} ry={H * 0.035} fill="#0d2a5a" />
         <Ellipse cx={W * 0.82} cy={H * 0.065} rx={W * 0.07} ry={H * 0.028} fill="#0d2a5a" />
         <Ellipse cx={W * 0.94} cy={H * 0.075} rx={W * 0.06} ry={H * 0.025} fill="#0d2a5a" />
 
-        {/* Center-top cloud */}
         <Ellipse cx={W * 0.52} cy={H * 0.12} rx={W * 0.08} ry={H * 0.022} fill="#0c2550" />
       </G>
 
-      {/* ── City skyline silhouettes ── */}
       <G fill="#0a1f45" opacity="0.9">
-        {/* Left side buildings */}
         <Rect x={W * 0.02}  y={horizon - H * 0.18} width={W * 0.05} height={H * 0.18} />
         <Rect x={W * 0.06}  y={horizon - H * 0.13} width={W * 0.04} height={H * 0.13} />
         <Rect x={W * 0.09}  y={horizon - H * 0.22} width={W * 0.035} height={H * 0.22} />
         <Rect x={W * 0.12}  y={horizon - H * 0.15} width={W * 0.045} height={H * 0.15} />
         <Rect x={W * 0.16}  y={horizon - H * 0.10} width={W * 0.03}  height={H * 0.10} />
         <Rect x={W * 0.19}  y={horizon - H * 0.17} width={W * 0.04}  height={H * 0.17} />
-        {/* Right side buildings */}
         <Rect x={W * 0.79}  y={horizon - H * 0.17} width={W * 0.04}  height={H * 0.17} />
         <Rect x={W * 0.83}  y={horizon - H * 0.10} width={W * 0.03}  height={H * 0.10} />
         <Rect x={W * 0.86}  y={horizon - H * 0.15} width={W * 0.045} height={H * 0.15} />
@@ -155,9 +121,7 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         <Rect x={W * 0.96}  y={horizon - H * 0.18} width={W * 0.05}  height={H * 0.18} />
       </G>
 
-      {/* ── Building windows (tiny dots of light) ── */}
       <G fill="#4a9eff" opacity="0.6">
-        {/* Left buildings windows */}
         <Rect x={W * 0.03}  y={horizon - H * 0.16} width={2} height={2} />
         <Rect x={W * 0.05}  y={horizon - H * 0.16} width={2} height={2} />
         <Rect x={W * 0.03}  y={horizon - H * 0.12} width={2} height={2} />
@@ -183,19 +147,15 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         <Rect x={W * 0.94}  y={horizon - H * 0.08} width={2} height={2} />
       </G>
 
-      {/* ── Trees / bushes behind outfield wall ── */}
       <G fill="#1a5c1a" opacity="0.85">
-        {/* Left trees */}
         <Ellipse cx={W * 0.24} cy={horizon - 2} rx={W * 0.045} ry={H * 0.028} />
         <Ellipse cx={W * 0.30} cy={horizon - 4} rx={W * 0.05}  ry={H * 0.030} />
         <Ellipse cx={W * 0.20} cy={horizon}     rx={W * 0.035} ry={H * 0.022} />
-        {/* Right trees */}
         <Ellipse cx={W * 0.76} cy={horizon - 2} rx={W * 0.045} ry={H * 0.028} />
         <Ellipse cx={W * 0.70} cy={horizon - 4} rx={W * 0.05}  ry={H * 0.030} />
         <Ellipse cx={W * 0.80} cy={horizon}     rx={W * 0.035} ry={H * 0.022} />
       </G>
 
-      {/* ── Outfield wall / fence ── */}
       <Rect
         x={W * 0.05} y={horizon - 3}
         width={W * 0.90} height={8}
@@ -203,7 +163,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="#2255aa"
         opacity="0.9"
       />
-      {/* Wall top highlight */}
       <Rect
         x={W * 0.05} y={horizon - 3}
         width={W * 0.90} height={3}
@@ -212,7 +171,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         opacity="0.6"
       />
 
-      {/* ── Outfield grass (beyond infield) ── */}
       <Path
         d={`M ${W * 0.05} ${horizon + 5}
             L ${W * 0.28} ${H * 0.44}
@@ -222,20 +180,16 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="url(#grassGrad)"
       />
 
-      {/* ── Grass mowing stripes on outfield ── */}
       <G opacity="0.12">
         {[0.44, 0.47, 0.50, 0.53, 0.56, 0.59, 0.62].map((y, i) => (
           <Rect key={i} x={0} y={H * y} width={W} height={H * 0.015} fill={i % 2 === 0 ? '#000' : '#fff'} />
         ))}
       </G>
 
-      {/* ── Field ambient light overlay ── */}
       <Rect x="0" y={horizon} width={W} height={H - horizon} fill="url(#fieldLight)" />
 
-      {/* ── Infield dirt trapezoid ── */}
       <Polygon points={dirtTrapezoid} fill="url(#dirtGrad)" />
 
-      {/* ── Near grass wedges (corners, foreground) ── */}
       <Path
         d={`M 0 ${H} L ${W * 0.08} ${H * 0.98} L 0 ${H * 0.98} Z`}
         fill="url(#nearGrassGrad)"
@@ -244,7 +198,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         d={`M ${W} ${H} L ${W * 0.92} ${H * 0.98} L ${W} ${H * 0.98} Z`}
         fill="url(#nearGrassGrad)"
       />
-      {/* Left green wedge */}
       <Path
         d={`M ${fieldLeft} ${fieldBottom}
             L ${W * 0.08} ${H * 0.98}
@@ -253,7 +206,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
             Z`}
         fill="url(#nearGrassGrad)"
       />
-      {/* Right green wedge */}
       <Path
         d={`M ${fieldRight} ${fieldBottom}
             L ${W * 0.92} ${H * 0.98}
@@ -263,7 +215,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="url(#nearGrassGrad)"
       />
 
-      {/* ── Baselines on dirt ── */}
       <Path
         d={baselinePath}
         stroke="rgba(255,255,255,0.55)"
@@ -271,8 +222,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="none"
       />
 
-      {/* ── Base bags ── */}
-      {/* First base */}
       <Rect
         x={firstX - 5} y={firstY - 4}
         width={10} height={8}
@@ -280,7 +229,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="white"
         opacity="0.92"
       />
-      {/* Second base */}
       <Rect
         x={secondX - 4} y={secondY - 3}
         width={8} height={6}
@@ -288,7 +236,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="white"
         opacity="0.92"
       />
-      {/* Third base */}
       <Rect
         x={thirdX - 5} y={thirdY - 4}
         width={10} height={8}
@@ -297,19 +244,16 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         opacity="0.92"
       />
 
-      {/* ── Pitcher's mound ── */}
       <Ellipse
         cx={moundX} cy={moundY}
         rx={W * 0.055} ry={H * 0.022}
         fill="url(#moundGrad)"
       />
-      {/* Mound highlight */}
       <Ellipse
         cx={moundX} cy={moundY - H * 0.005}
         rx={W * 0.025} ry={H * 0.009}
         fill="rgba(220,180,130,0.5)"
       />
-      {/* Rubber */}
       <Rect
         x={moundX - 6} y={moundY - 2}
         width={12} height={4}
@@ -318,8 +262,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         opacity="0.8"
       />
 
-      {/* ── Home plate area ── */}
-      {/* Batter's box lines */}
       <Rect
         x={homeX - 22} y={homeY - 18}
         width={18} height={28}
@@ -335,23 +277,16 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         fill="none"
       />
 
-      {/* ── Left field light pole ── */}
       <G>
-        {/* Pole */}
         <Rect x={W * 0.29 - 3} y={H * 0.06} width={6} height={H * 0.34} rx={2} fill="#334466" />
-        {/* Light fixture bar */}
         <Rect x={W * 0.29 - 22} y={H * 0.06} width={44} height={8} rx={3} fill="#445577" />
-        {/* Light bulbs */}
         <Ellipse cx={W * 0.29 - 14} cy={H * 0.06 + 4} rx={5} ry={4} fill="#fffde0" opacity="0.95" />
         <Ellipse cx={W * 0.29}      cy={H * 0.06 + 4} rx={5} ry={4} fill="#fffde0" opacity="0.95" />
         <Ellipse cx={W * 0.29 + 14} cy={H * 0.06 + 4} rx={5} ry={4} fill="#fffde0" opacity="0.95" />
-        {/* Glow halos */}
         <Ellipse cx={W * 0.29 - 14} cy={H * 0.06 + 4} rx={11} ry={9} fill="#a0d8ff" opacity="0.30" />
         <Ellipse cx={W * 0.29}      cy={H * 0.06 + 4} rx={11} ry={9} fill="#a0d8ff" opacity="0.30" />
         <Ellipse cx={W * 0.29 + 14} cy={H * 0.06 + 4} rx={11} ry={9} fill="#a0d8ff" opacity="0.30" />
       </G>
-
-      {/* ── Right field light pole ── */}
       <G>
         <Rect x={W * 0.71 - 3} y={H * 0.06} width={6} height={H * 0.34} rx={2} fill="#334466" />
         <Rect x={W * 0.71 - 22} y={H * 0.06} width={44} height={8} rx={3} fill="#445577" />
@@ -363,7 +298,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         <Ellipse cx={W * 0.71 + 14} cy={H * 0.06 + 4} rx={11} ry={9} fill="#a0d8ff" opacity="0.30" />
       </G>
 
-      {/* ── Light beam cones (subtle) ── */}
       <Path
         d={`M ${W * 0.29} ${H * 0.07} L ${W * 0.15} ${H * 0.42} L ${W * 0.43} ${H * 0.42} Z`}
         fill="#a8d8ff"

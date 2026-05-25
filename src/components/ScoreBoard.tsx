@@ -1,57 +1,62 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { GameStats, PitchType } from '../types/types';
+import { View, Text, StyleSheet } from 'react-native';
 
-interface ScoreBoardProps {
+import { GameStats, PitchType } from '../types/types';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface Props {
   stats: GameStats;
-  pitchSpeed: number;
   pitchType: PitchType;
+  pitchSpeed: number;
 }
 
-export default function ScoreBoard({ stats, pitchSpeed, pitchType }: ScoreBoardProps) {
+export default function ScoreBoard({
+  stats,
+  pitchType,
+  pitchSpeed,
+}: Props) {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.row}>
-        <StatCell label="SCORE" value={stats.score} accent />
-        <StatCell label="HR" value={stats.homeruns} />
-        <StatCell label="HITS" value={stats.singles} />
-        <StatCell label="STREAK" value={stats.streak} accent />
+        <Stat label="SCORE" value={stats.score} />
+        <Stat label="HR" value={stats.homeruns} />
+        <Stat label="STREAK" value={stats.streak} />
       </View>
+
       <View style={styles.divider} />
+
       <View style={styles.row}>
-        <StatCell label="STRIKES" value={stats.strikes} warn />
-        <StatCell label="BALLS" value={stats.balls} />
-        <View style={styles.pitchCell}>
-          <Text style={styles.pitchSpeed}>{pitchSpeed} MPH</Text>
-          <Text style={styles.pitchType}>{pitchType.toUpperCase()}</Text>
+        <Stat label="MAX" value={stats.maxDistance} />
+
+        <View style={styles.pitchBox}>
+          <Text style={styles.pitchSpeed}>{pitchSpeed}</Text>
+          <Text style={styles.pitchType}>{pitchType}</Text>
         </View>
-        <StatCell label="MAX FT" value={stats.maxDistance} />
+
+        <Stat label="STRIKE" value={stats.strikes} />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
-function StatCell({ label, value, accent, warn }: { label: string; value: number; accent?: boolean; warn?: boolean }) {
+function Stat({ label, value }: any) {
   return (
-    <View style={styles.statCell}>
-      <Text style={[styles.statValue, accent && styles.accentValue, warn && styles.warnValue]}>
-        {value}
-      </Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={styles.stat}>
+      <Text style={styles.value}>{value}</Text>
+      <Text style={styles.label}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 380,
-    backgroundColor: '#060e1e',
-    borderColor: '#1e3a5f',
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
+    width: '95%',
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    marginBottom: 12,
   },
   row: {
     flexDirection: 'row',
@@ -60,45 +65,33 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#1e3a5f',
-    marginVertical: 6,
+    backgroundColor: '#1e293b',
+    marginVertical: 8,
   },
-  statCell: {
+  stat: {
     alignItems: 'center',
     flex: 1,
   },
-  statValue: {
-    fontSize: 18,
+  value: {
+    color: 'white',
     fontWeight: 'bold',
-    color: '#e2e8f0',
-    fontFamily: Platform.OS === 'ios' ? 'Courier-Bold' : 'monospace',
+    fontSize: 22,
   },
-  accentValue: {
-    color: '#38bdf8',
-  },
-  warnValue: {
-    color: '#f87171',
-  },
-  statLabel: {
-    fontSize: 8,
+  label: {
     color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 1,
+    fontSize: 10,
   },
-  pitchCell: {
-    alignItems: 'center',
+  pitchBox: {
     flex: 1,
+    alignItems: 'center',
   },
   pitchSpeed: {
-    fontSize: 16,
-    fontWeight: 'bold',
     color: '#facc15',
-    fontFamily: Platform.OS === 'ios' ? 'Courier-Bold' : 'monospace',
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   pitchType: {
-    fontSize: 8,
-    color: '#64748b',
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-    marginTop: 1,
+    color: '#cbd5e1',
+    fontSize: 10,
   },
 });

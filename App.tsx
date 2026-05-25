@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, StatusBar, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { GameStage, PitchType, GameStats } from './src/types/types';
+
 import ScoreBoard from './src/components/ScoreBoard';
 import GameView from './src/components/GameView';
 import ControlPanel from './src/components/ControlPanel';
-import { useMicLevel } from './src/hooks/useMicLevel';
 
 export default function App() {
   const [stats, setStats] = useState<GameStats>({
@@ -23,108 +25,122 @@ export default function App() {
   const [stage, setStage] = useState<GameStage>(GameStage.PitcherWindup);
   const [pitchType, setPitchType] = useState<PitchType>(PitchType.Fastball);
   const [pitchSpeed, setPitchSpeed] = useState<number>(92);
-  const [announceText, setAnnounceText] = useState<string>('Get Ready...');
 
-  const [micEnabled, setMicEnabled] = useState<boolean>(false);
-  const [triggerSwing, setTriggerSwing] = useState<boolean>(false);
-  const [blowStrength, setBlowStrength] = useState<number>(50);
+  const [announceText, setAnnounceText] = useState<string>('GET READY');
 
-  // Audio mic trigger via custom hook
-  useMicLevel({
-    enabled: micEnabled,
-    onBlowTriggered: (strength: number) => {
-      setBlowStrength(strength);
-      setTriggerSwing(true);
-    },
-  });
+  const [triggerSwing, setTriggerSwing] = useState(false);
+  const [blowStrength, setBlowStrength] = useState(80);
 
-  // State transitions management (Result to Resetting)
   useEffect(() => {
     let timer: NodeJS.Timeout;
+
     if (
       stage === GameStage.ResultStrike ||
-      stage === GameStage.ResultBall ||
-      stage === GameStage.ResultFoul ||
       stage === GameStage.ResultHit ||
-      stage === GameStage.ResultHomerun
+      stage === GameStage.ResultHomerun ||
+      stage === GameStage.ResultFoul
     ) {
       timer = setTimeout(() => {
         setStage(GameStage.Resetting);
-      }, 3500);
+      }, 2600);
     }
+
     return () => clearTimeout(timer);
   }, [stage]);
 
-  // Resetting to PitcherWindup transitions
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (stage === GameStage.Resetting) {
-      setAnnounceText('Preparing next pitch...');
-      timer = setTimeout(() => {
-        const pitches = [PitchType.Fastball, PitchType.Curveball, PitchType.Changeup];
-        const nextPitch = pitches[Math.floor(Math.random() * pitches.length)];
-        setPitchType(nextPitch);
 
-        let speedMph = 92;
-        if (nextPitch === PitchType.Curveball) speedMph = 78;
-        else if (nextPitch === PitchType.Changeup) speedMph = 70;
-        setPitchSpeed(speedMph);
+    if (stage === GameStage.Resetting) {
+      setAnnounceText('NEXT PITCH');
+
+      timer = setTimeout(() => {
+        const all = [
+          PitchType.Fastball,
+          PitchType.Curveball,
+          PitchType.Changeup,
+        ];
+
+        const next = all[Math.floor(Math.random() * all.length)];
+
+        setPitchType(next);
+
+        if (next === PitchType.Fastball) {
+          setPitchSpeed(98);
+        } else if (next === PitchType.Curveball) {
+          setPitchSpeed(82);
+        } else {
+          setPitchSpeed(75);
+        }
 
         setStage(GameStage.PitcherWindup);
-      }, 1200);
+      }, 1000);
     }
+
     return () => clearTimeout(timer);
   }, [stage]);
 
-  // Windup to Pitch releases
   useEffect(() => {
     let timer: NodeJS.Timeout;
+
     if (stage === GameStage.PitcherWindup) {
-      setAnnounceText('PITCHER WINDING UP...');
+      setAnnounceText('PITCHER READY');
+
       timer = setTimeout(() => {
         setStage(GameStage.InFlight);
-        setAnnounceText('PITCH RELEASED!');
-      }, 1500);
+        setAnnounceText('SWING NOW');
+      }, 1400);
     }
+
     return () => clearTimeout(timer);
   }, [stage]);
 
   const handleManualSwing = () => {
-    setBlowStrength(80);
+    setBlowStrength(90);
     setTriggerSwing(true);
   };
 
-  const handleSwingResult = (isHit: boolean, distance?: number) => {
+  const handleSwingResult = (
+    isHit: boolean,
+    distance?: number,
+    direction?: string,
+  ) => {
     if (isHit && distance) {
       if (distance >= 400) {
         setStage(GameStage.ResultHomerun);
-        setAnnounceText(`☄️ HOMERUN! ${distance} FT`);
-        setStats((prev) => ({
+
+        setAnnounceText(`💥 HOMERUN • ${direction} • ${distance} FT`);
+
+        setStats(prev => ({
           ...prev,
-          score: prev.score + prev.streak + 1,
           homeruns: prev.homeruns + 1,
+          score: prev.score + 4,
           streak: prev.streak + 1,
-          totalPitches: prev.totalPitches + 1,
           maxDistance: Math.max(prev.maxDistance, distance),
+          totalPitches: prev.totalPitches + 1,
         }));
       } else {
         setStage(GameStage.ResultHit);
-        setAnnounceText(`⚾ SOLID HIT! ${distance} FT`);
-        setStats((prev) => ({
+
+        setAnnounceText(`⚾ ${direction} • ${distance} FT`);
+
+        setStats(prev => ({
           ...prev,
           singles: prev.singles + 1,
           score: prev.score + 1,
           streak: prev.streak + 1,
-          totalPitches: prev.totalPitches + 1,
           maxDistance: Math.max(prev.maxDistance, distance),
+          totalPitches: prev.totalPitches + 1,
         }));
       }
     } else {
       setStage(GameStage.ResultStrike);
-      setAnnounceText('❌ STRIKE!');
-      setStats((prev) => ({
+
+      setAnnounceText('❌ STRIKE');
+
+      setStats(prev => ({
         ...prev,
-        strikes: prev.strikes + 1 >= 3 ? 0 : prev.strikes + 1,
+        strikes: prev.strikes + 1,
         streak: 0,
         totalPitches: prev.totalPitches + 1,
       }));
@@ -132,62 +148,59 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.background}>
-      <StatusBar barStyle="light-content" backgroundColor="#030712" />
-      
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#020617" />
+
       <View style={styles.header}>
-        <Text style={styles.title}>⚾ MICRO-SWING</Text>
-        <Text style={styles.subtitle}>PORTRAIT REACT NATIVE CLI MODE</Text>
+        <Text style={styles.title}>⚾ MICRO SWING</Text>
+        <Text style={styles.sub}>ARCADE BASEBALL</Text>
       </View>
 
-      <View style={styles.container}>
-        <ScoreBoard stats={stats} pitchSpeed={pitchSpeed} pitchType={pitchType} />
-        
-        <GameView
-          stage={stage}
-          pitchType={pitchType}
-          pitchSpeed={pitchSpeed}
-          announceText={announceText}
-          triggerSwing={triggerSwing}
-          setTriggerSwing={setTriggerSwing}
-          blowStrength={blowStrength}
-          onSwingResult={handleSwingResult}
-        />
+      <ScoreBoard
+        stats={stats}
+        pitchType={pitchType}
+        pitchSpeed={pitchSpeed}
+      />
 
-        <ControlPanel
-          micEnabled={micEnabled}
-          setMicEnabled={setMicEnabled}
-          onManualSwing={handleManualSwing}
-        />
-      </View>
+      <GameView
+        stage={stage}
+        pitchType={pitchType}
+        pitchSpeed={pitchSpeed}
+        announceText={announceText}
+        triggerSwing={triggerSwing}
+        setTriggerSwing={setTriggerSwing}
+        blowStrength={blowStrength}
+        onSwingResult={handleSwingResult}
+      />
+
+      <ControlPanel
+        micEnabled={false}
+        setMicEnabled={() => {}}
+        onManualSwing={handleManualSwing}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
+  root: {
     flex: 1,
-    backgroundColor: '#030712',
+    backgroundColor: '#020617',
+    alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginVertical: 12,
+    marginTop: 10,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 20,
+    color: 'white',
     fontWeight: 'bold',
-    color: '#ffffff',
-    letterSpacing: 1.5,
+    fontSize: 22,
   },
-  subtitle: {
-    fontSize: 9,
-    fontFamily: 'monospace',
+  sub: {
     color: '#64748b',
-    marginTop: 2,
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 16,
-    alignItems: 'center',
+    fontSize: 10,
+    marginTop: 3,
   },
 });
