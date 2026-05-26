@@ -7,6 +7,20 @@ interface UseMicLevelProps {
   onBlowTriggered: (strength: number) => void;
 }
 
+const catchNativeError = (
+  result: unknown,
+  onError: (err: unknown) => void,
+) => {
+  if (
+    result &&
+    typeof result === 'object' &&
+    'catch' in result &&
+    typeof result.catch === 'function'
+  ) {
+    result.catch(onError);
+  }
+};
+
 export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
   const [hasPermission, setHasPermission] = useState<boolean>(false);
 
@@ -44,7 +58,7 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
     }
 
     let lastTriggerTime = 0;
-    SoundLevel.start();
+    let isListening = true;
 
     const listener = (data: any) => {
       const decibel = data.value;
@@ -60,9 +74,25 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
     };
 
     SoundLevel.onNewFrame = listener;
+    catchNativeError(
+      SoundLevel.start(),
+      (err: unknown) => {
+        if (isListening) {
+          console.warn('Microphone monitor failed to start:', err);
+          setHasPermission(false);
+        }
+      },
+    );
 
     return () => {
-      SoundLevel.stop();
+      isListening = false;
+      SoundLevel.onNewFrame = () => {};
+      catchNativeError(
+        SoundLevel.stop(),
+        (err: unknown) => {
+          console.warn('Microphone monitor failed to stop:', err);
+        },
+      );
     };
   }, [enabled, hasPermission, onBlowTriggered]);
 

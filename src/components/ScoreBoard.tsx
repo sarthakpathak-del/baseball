@@ -8,41 +8,52 @@ interface Props {
   stats: GameStats;
   pitchType: PitchType;
   pitchSpeed: number;
+  timeText: string;
 }
 
 export default function ScoreBoard({
   stats,
   pitchType,
   pitchSpeed,
+  timeText,
 }: Props) {
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.row}>
-        <Stat label="SCORE" value={stats.score} />
-        <Stat label="HR" value={stats.homeruns} />
-        <Stat label="STREAK" value={stats.streak} />
+      <Stat label="SCORE" value={stats.score} emphasis />
+
+      <View style={styles.pitchBox}>
+        <Text style={styles.pitchSpeed}>{pitchSpeed}</Text>
+        <Text style={styles.pitchType}>{pitchType}</Text>
       </View>
 
-      <View style={styles.divider} />
-
-      <View style={styles.row}>
-        <Stat label="MAX" value={stats.maxDistance} />
-
-        <View style={styles.pitchBox}>
-          <Text style={styles.pitchSpeed}>{pitchSpeed}</Text>
-          <Text style={styles.pitchType}>{pitchType}</Text>
-        </View>
-
-        <Stat label="STRIKE" value={stats.strikes} />
-      </View>
+      <Stat label="STRIKES" value={`${stats.strikes}/3`} />
+      <Stat label="TIME" value={timeText} warning />
     </SafeAreaView>
   );
 }
 
-function Stat({ label, value }: any) {
+function Stat({
+  label,
+  value,
+  emphasis,
+  warning,
+}: {
+  label: string;
+  value: string | number;
+  emphasis?: boolean;
+  warning?: boolean;
+}) {
   return (
     <View style={styles.stat}>
-      <Text style={styles.value}>{value}</Text>
+      <Text
+        style={[
+          styles.value,
+          emphasis && styles.valueEmphasis,
+          warning && styles.valueWarning,
+        ]}
+      >
+        {value}
+      </Text>
       <Text style={styles.label}>{label}</Text>
     </View>
   );
@@ -53,20 +64,14 @@ const styles = StyleSheet.create({
     width: '95%',
     backgroundColor: 'rgba(15,23,42,0.95)',
     borderRadius: 14,
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#1e293b',
-    marginBottom: 12,
-  },
-  row: {
+    marginBottom: 10,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#1e293b',
-    marginVertical: 8,
+    justifyContent: 'space-between',
   },
   stat: {
     alignItems: 'center',
@@ -75,7 +80,13 @@ const styles = StyleSheet.create({
   value: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
+  },
+  valueEmphasis: {
     fontSize: 22,
+  },
+  valueWarning: {
+    color: '#facc15',
   },
   label: {
     color: '#64748b',
@@ -87,7 +98,7 @@ const styles = StyleSheet.create({
   },
   pitchSpeed: {
     color: '#facc15',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   pitchType: {

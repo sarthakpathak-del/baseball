@@ -7,41 +7,74 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 interface ControlPanelProps {
   micEnabled: boolean;
   setMicEnabled: (val: boolean) => void;
+  hasMicPermission: boolean;
   onManualSwing: () => void;
+  canSwing: boolean;
 }
 
 export default function ControlPanel({
   micEnabled,
   setMicEnabled,
+  hasMicPermission,
   onManualSwing,
+  canSwing,
 }: ControlPanelProps) {
   return (
     <SafeAreaView style={styles.container}>
-      {/* <TouchableOpacity
-        id="btn-mic-toggle"
+      <TouchableOpacity
+        activeOpacity={0.8}
         onPress={() => setMicEnabled(!micEnabled)}
         style={[
           styles.micButton,
           {
-            borderColor: micEnabled ? '#10b981' : '#475569',
-            backgroundColor: micEnabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(71, 85, 105, 0.1)',
+            borderColor: micEnabled
+              ? '#22c55e'
+              : '#64748b',
+            backgroundColor: micEnabled
+              ? 'rgba(34,197,94,0.12)'
+              : 'transparent',
           },
         ]}
       >
-        <Text style={[styles.micIcon, { color: micEnabled ? '#34d399' : '#94a3b8' }]}>🎤</Text>
-        {/* <Text style={styles.micLabel}>MIC DETECTOR:</Text> */}
-        {/* <Text style={[styles.micStatus, { color: micEnabled ? '#10b981' : '#ef4444' }]}>
-          {micEnabled ? 'ON' : 'OFF'}
-        </Text>
-      </TouchableOpacity> */} 
+        <Text style={styles.micIcon}>🎤</Text>
+        <View>
+          <Text style={styles.micLabel}>
+            {micEnabled
+              ? 'Blow into phone to swing'
+              : 'Tap to enable mic'}
+          </Text>
+          <Text
+            style={[
+              styles.micStatus,
+              {
+                color: micEnabled
+                  ? '#16a34a'
+                  : '#f59e0b',
+              },
+            ]}
+          >
+            {micEnabled
+              ? hasMicPermission
+                ? 'Mic enabled'
+                : 'Waiting for permission'
+              : 'Mic is off'}
+          </Text>
+        </View>
+      </TouchableOpacity>
 
-     <TouchableOpacity
+      <TouchableOpacity
         id="btn-big-swing"
         onPress={onManualSwing}
+        disabled={!canSwing}
         activeOpacity={0.8}
-        style={styles.swingBtn}
+        style={[
+          styles.swingBtn,
+          !canSwing && styles.swingBtnDisabled,
+        ]}
       >
-        <Text style={styles.swingBtnText}>🔥 BIG SWING!</Text>
+        <Text style={styles.swingBtnText}>
+          {canSwing ? '🔥 BIG SWING!' : 'WAIT FOR PITCH'}
+        </Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -85,6 +118,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
+  },
+  swingBtnDisabled: {
+    backgroundColor: '#475569',
+    opacity: 0.65,
   },
   swingBtnText: {
     color: '#ffffff',

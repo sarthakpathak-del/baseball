@@ -6,8 +6,10 @@ export enum GameStage {
   ResultFoul = 'ResultFoul',
   ResultHit = 'ResultHit',
   ResultHomerun = 'ResultHomerun',
+  ResultOut = 'ResultOut',
   BallFlying = 'BallFlying',
   Resetting = 'Resetting',
+  GameOver = 'GameOver',
 }
 
 export enum PitchType {
@@ -30,3 +32,5 @@ export interface GameStats {
 }
 
 export type HitQuality = 'perfect' | 'good' | 'late' | 'early' | 'miss';
+
+export type SwingResultReason = 'hit' | 'miss' | 'fieldedOut';

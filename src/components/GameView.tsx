@@ -1,23 +1,37 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
 
 import Svg, {
   Circle,
   G,
   Rect,
-  Ellipse,
-  Line,
 } from 'react-native-svg';
 
 import StadiumBackground from './StadiumBackground';
-import { GameStage, PitchType } from '../types/types';
+import { GameStage, PitchType, SwingResultReason } from '../types/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import BaseballBat, {
+  BAT_BARREL_X,
+  BAT_BARREL_Y,
+  BAT_HANDLE_X,
+  BAT_HANDLE_Y,
+  BAT_PIVOT_X,
+  BAT_PIVOT_Y,
+  BAT_SWING_OFFSET_X,
+  BAT_SWING_OFFSET_Y,
+} from '../Assests/BaseballBat';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,8 +50,22 @@ interface Props {
     isHit: boolean,
     distance?: number,
     direction?: string,
+    reason?: SwingResultReason,
   ) => void;
 }
+
+type Fielder = {
+  x: number;
+  y: number;
+};
+
+type FieldingPlay = 'groundBall' | 'popup';
+
+const BASE_FIELDERS: Fielder[] = [
+  { x: 90, y: 220 },
+  { x: CANVAS_WIDTH / 2, y: 180 },
+  { x: CANVAS_WIDTH - 90, y: 220 },
+];
 
 export default function GameView({
   stage,
@@ -48,14 +76,36 @@ export default function GameView({
   blowStrength,
   onSwingResult,
 }: Props) {
-  const pitchProgress = useRef(new Animated.Value(0)).current;
 
-  const [ballVisible, setBallVisible] = useState(false);
 
-  const [ballX, setBallX] = useState(CANVAS_WIDTH / 2);
+  const pitchProgress = useRef(
+    new Animated.Value(0),
+  ).current;
+
+  const batSwing = useRef(
+    new Animated.Value(0),
+  ).current;
+
+  const [ballVisible, setBallVisible] =
+    useState(false);
+
+  const [ballX, setBallX] = useState(
+    CANVAS_WIDTH / 2,
+  );
+
   const [ballY, setBallY] = useState(100);
 
-  const [hitBall, setHitBall] = useState<any>(null);
+  const [hitBall, setHitBall] =
+    useState<any>(null);
+
+  const [fielders, setFielders] = useState<Fielder[]>(
+    BASE_FIELDERS,
+  );
+  const [activeFielder, setActiveFielder] =
+    useState<number | null>(null);
+
+  const swingActive = useRef(false);
+  const swingResolved = useRef(false);
 
   const pitcherX = CANVAS_WIDTH / 2;
   const pitcherY = CANVAS_HEIGHT * 0.42;
@@ -63,22 +113,13 @@ export default function GameView({
   const plateX = CANVAS_WIDTH / 2;
   const plateY = CANVAS_HEIGHT * 0.80;
 
-  // FIELDERS
-
-  const fielders = [
-    { x: 80, y: 220 },
-    { x: CANVAS_WIDTH / 2, y: 190 },
-    { x: CANVAS_WIDTH - 80, y: 220 },
-  ];
-
-  // PITCH ANIMATION
-
   useEffect(() => {
     if (stage !== GameStage.InFlight) {
       return;
     }
 
     setBallVisible(true);
+    swingResolved.current = false;
 
     pitchProgress.setValue(0);
 
@@ -87,42 +128,81 @@ export default function GameView({
       duration: 1300,
       useNativeDriver: false,
     }).start(({ finished }) => {
-      if (finished) {
+      if (
+        finished &&
+        !swingResolved.current
+      ) {
         setBallVisible(false);
-        onSwingResult(false);
+
+        onSwingResult(false, undefined, undefined, 'miss');
       }
     });
   }, [stage]);
 
-  // BALL PATH
-
   useEffect(() => {
-    const id = pitchProgress.addListener(({ value }) => {
-      let curve = 0;
+    const id = pitchProgress.addListener(
+      ({ value }) => {
+        let curve = 0;
 
-      if (pitchType === PitchType.Curveball) {
-        curve = Math.sin(value * Math.PI) * 35;
-      }
+        if (
+          pitchType ===
+          PitchType.Curveball
+        ) {
+          curve =
+            Math.sin(value * Math.PI) *
+            35;
+        }
 
-      if (pitchType === PitchType.Changeup) {
-        curve = Math.sin(value * Math.PI) * 12;
-      }
+        if (
+          pitchType ===
+          PitchType.Changeup
+        ) {
+          curve =
+            Math.sin(value * Math.PI) *
+            12;
+        }
 
-      const x = pitcherX + curve;
+        const x = pitcherX + curve;
 
-      const y =
-        pitcherY + (plateY - pitcherY) * value;
+        const y =
+          pitcherY +
+          (plateY - pitcherY) * value;
 
-      setBallX(x);
-      setBallY(y);
-    });
+        setBallX(x);
+        setBallY(y);
+
+        if (
+          swingActive.current &&
+          !swingResolved.current &&
+          stage === GameStage.InFlight
+        ) {
+          const swingValue =
+            (batSwing as any).__getValue();
+
+          if (
+            detectBatHit(
+              x,
+              y,
+              swingValue,
+            )
+          ) {
+            swingResolved.current = true;
+
+            swingActive.current = false;
+
+            setBallVisible(false);
+
+            processSwingHit();
+          }
+        }
+      },
+    );
 
     return () => {
       pitchProgress.removeListener(id);
     };
-  }, [pitchType]);
+  }, [pitchType, stage]);
 
-  // REAL HIT SYSTEM
 
   useEffect(() => {
     if (!triggerSwing) {
@@ -131,32 +211,279 @@ export default function GameView({
 
     setTriggerSwing(false);
 
-    const p = (pitchProgress as any).__getValue();
+    if (stage !== GameStage.InFlight) {
+      swingActive.current = false;
+      return;
+    }
+
+    swingActive.current = true;
+
+    swingResolved.current = false;
+
+    batSwing.setValue(0);
+
+    Animated.sequence([
+      Animated.timing(batSwing, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(
+          Easing.cubic,
+        ),
+        useNativeDriver: true,
+      }),
+
+      Animated.timing(batSwing, {
+        toValue: 0,
+        duration: 260,
+        easing: Easing.inOut(
+          Easing.quad,
+        ),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      swingActive.current = false;
+    });
+  }, [stage, triggerSwing]);
+
+
+
+  const rotatePoint = (
+    pointX: number,
+    pointY: number,
+    pivotX: number,
+    pivotY: number,
+    angle: number,
+  ) => {
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+
+    const dx = pointX - pivotX;
+    const dy = pointY - pivotY;
+
+    return {
+      x:
+        pivotX +
+        dx * cos -
+        dy * sin,
+
+      y:
+        pivotY +
+        dx * sin +
+        dy * cos,
+    };
+  };
+
+  const getBatSegment = (
+    angle: number,
+  ) => {
+    const pivotX = plateX;
+    const pivotY = plateY;
+
+    const handle = rotatePoint(
+      plateX +
+        BAT_HANDLE_X -
+        BAT_PIVOT_X,
+      plateY +
+        BAT_HANDLE_Y -
+        BAT_PIVOT_Y,
+      pivotX,
+      pivotY,
+      angle,
+    );
+
+    const barrel = rotatePoint(
+      plateX +
+        BAT_BARREL_X -
+        BAT_PIVOT_X,
+      plateY +
+        BAT_BARREL_Y -
+        BAT_PIVOT_Y,
+      pivotX,
+      pivotY,
+      angle,
+    );
+
+    return { handle, barrel };
+  };
+
+  const getDistanceToSegment = (
+    px: number,
+    py: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+  ) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    if (dx === 0 && dy === 0) {
+      return Math.hypot(
+        px - x1,
+        py - y1,
+      );
+    }
+
+    const t =
+      ((px - x1) * dx +
+        (py - y1) * dy) /
+      (dx * dx + dy * dy);
+
+    const clamped = Math.max(
+      0,
+      Math.min(1, t),
+    );
+
+    const closestX =
+      x1 + clamped * dx;
+
+    const closestY =
+      y1 + clamped * dy;
+
+    return Math.hypot(
+      px - closestX,
+      py - closestY,
+    );
+  };
+
+  const detectBatHit = (
+    x: number,
+    y: number,
+    swingValue: number,
+  ) => {
+    const angleDeg = -3 - swingValue * 108;
+
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    const { handle, barrel } = getBatSegment(angleRad);
+
+    const swingOffsetX =
+      BAT_SWING_OFFSET_X * swingValue;
+    const swingOffsetY =
+      BAT_SWING_OFFSET_Y * swingValue;
+
+    const s = {
+      x: handle.x + swingOffsetX,
+      y: handle.y + swingOffsetY,
+    };
+    const e = {
+      x: barrel.x + swingOffsetX,
+      y: barrel.y + swingOffsetY,
+    };
+
+    return (
+      getDistanceToSegment(
+        x,
+        y,
+        s.x,
+        s.y,
+        e.x,
+        e.y,
+      ) < 18
+    );
+  };
+
+  const getFielderIndex = (
+    direction: string,
+  ) => {
+    if (direction === 'LEFT FIELD') {
+      return 0;
+    }
+
+    if (direction === 'RIGHT FIELD') {
+      return 2;
+    }
+
+    return 1;
+  };
+
+  const getFieldingResult = (
+    play: FieldingPlay,
+    power: number,
+  ) => {
+    const outChance =
+      play === 'popup'
+        ? Math.max(0.55, 0.88 - power * 0.45)
+        : Math.max(0.42, 0.78 - power * 0.65);
+
+    const isOut = Math.random() < outChance;
+
+    const safeDistance =
+      play === 'popup'
+        ? 110 + Math.floor(power * 120)
+        : 70 + Math.floor(power * 150);
+
+    return { isOut, safeDistance };
+  };
+
+  useEffect(() => {
+    if (!hitBall || activeFielder === null) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setFielders(prev =>
+        prev.map((f, index) => {
+          if (index !== activeFielder) {
+            return f;
+          }
+
+          const dx = hitBall.x - f.x;
+          const dy = hitBall.y - f.y;
+          const distance = Math.hypot(dx, dy);
+
+          if (distance < 4) {
+            return f;
+          }
+
+          return {
+            x: f.x + dx * 0.12,
+            y: f.y + dy * 0.12,
+          };
+        }),
+      );
+    }, 16);
+
+    return () => clearInterval(interval);
+  }, [hitBall, activeFielder]);
+
+  useEffect(() => {
+    if (hitBall !== null) {
+      return;
+    }
+
+    if (activeFielder === null) {
+      return;
+    }
+
+    const resetTimeout = setTimeout(() => {
+      setFielders(BASE_FIELDERS);
+      setActiveFielder(null);
+    }, 400);
+
+    return () => clearTimeout(resetTimeout);
+  }, [hitBall, activeFielder]);
+
+  const processSwingHit = () => {
+    const p =
+      (pitchProgress as any).__getValue();
 
     let contactQuality = 0;
 
     if (p >= 0.91 && p <= 0.96) {
-      contactQuality = 1.0;
-    } else if (p >= 0.85 && p <= 0.99) {
+      contactQuality = 1;
+    } else if (
+      p >= 0.85 &&
+      p <= 0.99
+    ) {
       contactQuality = 0.75;
-    } else if (p >= 0.78 && p <= 1.02) {
-      contactQuality = 0.45;
     } else {
-      contactQuality = 0;
+      contactQuality = 0.45;
     }
 
-    const power = blowStrength / 100;
-
-    const finalPower = contactQuality * power;
-
-    // MISS
-
-    if (finalPower <= 0.15) {
-      onSwingResult(false);
-      return;
-    }
-
-    // RANDOM DIRECTION
+    const power =
+      (blowStrength / 100) *
+      contactQuality;
 
     let direction = 'CENTER FIELD';
 
@@ -168,98 +495,107 @@ export default function GameView({
       direction = 'RIGHT FIELD';
     }
 
-    // GROUND BALL
+    setActiveFielder(getFielderIndex(direction));
 
-    if (finalPower <= 0.35) {
+    if (power <= 0.38) {
+      const result = getFieldingResult('groundBall', power);
+
       animateGroundBall(direction);
 
       setTimeout(() => {
-        onSwingResult(false);
+        if (result.isOut) {
+          onSwingResult(false, undefined, direction, 'fieldedOut');
+        } else {
+          onSwingResult(true, result.safeDistance, direction);
+        }
       }, 1800);
 
       return;
     }
 
-    // POPUP CATCH
+    if (power <= 0.55) {
+      const result = getFieldingResult('popup', power);
 
-    if (finalPower <= 0.5) {
       animatePopup(direction);
 
       setTimeout(() => {
-        onSwingResult(false);
-      }, 2200);
+        if (result.isOut) {
+          onSwingResult(false, undefined, direction, 'fieldedOut');
+        } else {
+          onSwingResult(true, result.safeDistance, direction);
+        }
+      }, 2000);
 
       return;
     }
 
-    // SINGLE
-
-    if (finalPower <= 0.70) {
+    if (power <= 0.75) {
       const distance =
-        180 + Math.floor(finalPower * 120);
+        180 +
+        Math.floor(power * 140);
 
       animateLineDrive(direction);
 
       setTimeout(() => {
-        onSwingResult(true, distance, direction);
-      }, 1400);
+        onSwingResult(
+          true,
+          distance,
+          direction,
+        );
+      }, 1500);
 
       return;
     }
 
-    // DOUBLE / TRIPLE
-
-    if (finalPower <= 0.88) {
+    if (power <= 0.92) {
       const distance =
-        280 + Math.floor(finalPower * 120);
+        320 +
+        Math.floor(power * 100);
 
       animateDeepFly(direction);
 
       setTimeout(() => {
-        onSwingResult(true, distance, direction);
+        onSwingResult(
+          true,
+          distance,
+          direction,
+        );
       }, 1800);
 
       return;
     }
 
-    // HOMERUN
+    const hrDistance =
+      420 +
+      Math.floor(Math.random() * 60);
 
-    if (
-      contactQuality > 0.9 &&
-      blowStrength > 80
-    ) {
-      const distance =
-        420 + Math.floor(Math.random() * 60);
-
-      animateHomerun(direction);
-
-      setTimeout(() => {
-        onSwingResult(true, distance, direction);
-      }, 2500);
-
-      return;
-    }
-
-    animateDeepFly(direction);
+    animateHomerun(direction);
 
     setTimeout(() => {
-      onSwingResult(true, 320, direction);
-    }, 1800);
-  }, [triggerSwing]);
+      onSwingResult(
+        true,
+        hrDistance,
+        direction,
+      );
+    }, 2500);
+  };
 
-  // GROUND BALL
+  // =========================
+  // BALL ANIMATIONS
+  // =========================
 
   const animateGroundBall = (
     direction: string,
   ) => {
-    let x = plateX;
-    let y = plateY - 10;
+    let x = ballX;
+    let y = ballY;
 
     const targetX =
       direction === 'LEFT FIELD'
-        ? 100
-        : direction === 'RIGHT FIELD'
-        ? CANVAS_WIDTH - 100
+        ? 90
+        : direction ===
+          'RIGHT FIELD'
+        ? CANVAS_WIDTH - 90
         : CANVAS_WIDTH / 2;
 
     const interval = setInterval(() => {
@@ -267,13 +603,10 @@ export default function GameView({
 
       y -= 1;
 
-      setHitBall({
-        x,
-        y,
-      });
+      setHitBall({ x, y });
 
       if (
-        Math.abs(targetX - x) < 5
+        Math.abs(targetX - x) < 4
       ) {
         clearInterval(interval);
 
@@ -284,24 +617,23 @@ export default function GameView({
     }, 16);
   };
 
-  // POPUP
-
   const animatePopup = (
     direction: string,
   ) => {
-    let x = plateX;
-    let y = plateY;
+    let x = ballX;
+    let y = ballY;
 
     const targetX =
       direction === 'LEFT FIELD'
         ? 120
-        : direction === 'RIGHT FIELD'
+        : direction ===
+          'RIGHT FIELD'
         ? CANVAS_WIDTH - 120
         : CANVAS_WIDTH / 2;
 
-    let velocity = -14;
+    let velocity = -13;
 
-    const gravity = 0.6;
+    const gravity = 0.65;
 
     const interval = setInterval(() => {
       x += (targetX - x) * 0.03;
@@ -310,12 +642,9 @@ export default function GameView({
 
       y += velocity;
 
-      setHitBall({
-        x,
-        y,
-      });
+      setHitBall({ x, y });
 
-      if (y > 220) {
+      if (y > 230) {
         clearInterval(interval);
 
         setTimeout(() => {
@@ -324,33 +653,29 @@ export default function GameView({
       }
     }, 16);
   };
-
-  // LINE DRIVE
 
   const animateLineDrive = (
     direction: string,
   ) => {
-    let x = plateX;
-    let y = plateY;
+    let x = ballX;
+    let y = ballY;
 
     const targetX =
       direction === 'LEFT FIELD'
-        ? 80
-        : direction === 'RIGHT FIELD'
-        ? CANVAS_WIDTH - 80
+        ? 70
+        : direction ===
+          'RIGHT FIELD'
+        ? CANVAS_WIDTH - 70
         : CANVAS_WIDTH / 2;
 
     const interval = setInterval(() => {
-      x += (targetX - x) * 0.06;
+      x += (targetX - x) * 0.05;
 
-      y -= 5;
+      y -= 4.5;
 
-      setHitBall({
-        x,
-        y,
-      });
+      setHitBall({ x, y });
 
-      if (y < 170) {
+      if (y < 180) {
         clearInterval(interval);
 
         setTimeout(() => {
@@ -360,19 +685,18 @@ export default function GameView({
     }, 16);
   };
 
-  // DEEP FLY
-
   const animateDeepFly = (
     direction: string,
   ) => {
-    let x = plateX;
-    let y = plateY;
+    let x = ballX;
+    let y = ballY;
 
     const targetX =
       direction === 'LEFT FIELD'
-        ? 60
-        : direction === 'RIGHT FIELD'
-        ? CANVAS_WIDTH - 60
+        ? 40
+        : direction ===
+          'RIGHT FIELD'
+        ? CANVAS_WIDTH - 40
         : CANVAS_WIDTH / 2;
 
     let velocity = -18;
@@ -386,12 +710,12 @@ export default function GameView({
 
       y += velocity;
 
-      setHitBall({
-        x,
-        y,
-      });
+      setHitBall({ x, y });
 
-      if (y > 120 && velocity > 0) {
+      if (
+        y > 100 &&
+        velocity > 0
+      ) {
         clearInterval(interval);
 
         setTimeout(() => {
@@ -401,19 +725,18 @@ export default function GameView({
     }, 16);
   };
 
-  // HOMERUN
-
   const animateHomerun = (
     direction: string,
   ) => {
-    let x = plateX;
-    let y = plateY;
+    let x = ballX;
+    let y = ballY;
 
     const targetX =
       direction === 'LEFT FIELD'
-        ? 40
-        : direction === 'RIGHT FIELD'
-        ? CANVAS_WIDTH - 40
+        ? 20
+        : direction ===
+          'RIGHT FIELD'
+        ? CANVAS_WIDTH - 20
         : CANVAS_WIDTH / 2;
 
     let velocity = -22;
@@ -427,10 +750,7 @@ export default function GameView({
 
       y += velocity;
 
-      setHitBall({
-        x,
-        y,
-      });
+      setHitBall({ x, y });
 
       if (y < -40) {
         clearInterval(interval);
@@ -442,12 +762,48 @@ export default function GameView({
     }, 16);
   };
 
+  // =========================
+  // BAT ROTATION
+  // =========================
+
+  const batRotate =
+    batSwing.interpolate({
+      inputRange: [0, 1],
+
+      outputRange: [
+        '-3deg',
+        '-111deg',
+      ],
+    });
+
   return (
     <SafeAreaView style={styles.wrapper}>
       <StadiumBackground
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
       />
+
+      {/* CROWD */}
+
+      <View style={styles.crowdRow}>
+        {Array.from({ length: 80 }).map(
+          (_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.crowdDot,
+                {
+                  opacity:
+                    0.4 +
+                    Math.random() * 0.6,
+                },
+              ]}
+            />
+          ),
+        )}
+      </View>
+
+      {/* GAME */}
 
       <Svg
         width={CANVAS_WIDTH}
@@ -461,14 +817,14 @@ export default function GameView({
             <Circle
               cx={f.x}
               cy={f.y}
-              r={12}
+              r={14}
               fill="#2563eb"
             />
 
             <Circle
               cx={f.x}
-              cy={f.y - 16}
-              r={7}
+              cy={f.y - 18}
+              r={8}
               fill="#f8c9a0"
             />
           </G>
@@ -479,17 +835,17 @@ export default function GameView({
         <G>
           <Circle
             cx={pitcherX}
-            cy={pitcherY - 16}
-            r={8}
+            cy={pitcherY - 18}
+            r={10}
             fill="#f8c9a0"
           />
 
           <Rect
-            x={pitcherX - 10}
-            y={pitcherY - 10}
-            width={20}
-            height={30}
-            rx={5}
+            x={pitcherX - 12}
+            y={pitcherY - 8}
+            width={24}
+            height={38}
+            rx={6}
             fill="#ef4444"
           />
         </G>
@@ -498,29 +854,19 @@ export default function GameView({
 
         <G>
           <Circle
-            cx={plateX + 28}
-            cy={plateY - 45}
-            r={8}
+            cx={plateX - 26}
+            cy={plateY - 48}
+            r={10}
             fill="#f8c9a0"
           />
 
           <Rect
-            x={plateX + 18}
+            x={plateX - 38}
             y={plateY - 38}
-            width={20}
-            height={34}
-            rx={5}
+            width={24}
+            height={40}
+            rx={6}
             fill="#0284c7"
-          />
-
-          <Line
-            x1={plateX + 35}
-            y1={plateY - 62}
-            x2={plateX + 50}
-            y2={plateY - 18}
-            stroke="#d97706"
-            strokeWidth={6}
-            strokeLinecap="round"
           />
         </G>
 
@@ -531,7 +877,7 @@ export default function GameView({
           y={plateY - 82}
           width={36}
           height={58}
-          stroke="rgba(0,255,255,0.5)"
+          stroke="rgba(0,255,255,0.45)"
           fill="rgba(0,255,255,0.05)"
           strokeDasharray="4,3"
         />
@@ -559,6 +905,15 @@ export default function GameView({
         )}
       </Svg>
 
+      {/* BAT */}
+
+      <BaseballBat
+        plateX={plateX}
+        plateY={plateY}
+        batSwing={batSwing}
+        batRotate={batRotate}
+      />
+
       {/* BANNER */}
 
       <View style={styles.banner}>
@@ -574,9 +929,27 @@ const styles = StyleSheet.create({
   wrapper: {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    borderRadius: 14,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#020617',
+  },
+
+  crowdRow: {
+    position: 'absolute',
+    top: 140,
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
+    gap: 6,
+    zIndex: 1,
+  },
+
+  crowdDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 10,
+    backgroundColor: '#fde68a',
   },
 
   banner: {
@@ -584,15 +957,17 @@ const styles = StyleSheet.create({
     bottom: 16,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor:
+      'rgba(0,0,0,0.75)',
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: 'center',
   },
 
   bannerText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
+    letterSpacing: 1,
   },
 });

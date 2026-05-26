@@ -30,10 +30,10 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
   const fieldBottom = H;
 
   const dirtTrapezoid = [
-    `${W * 0.08},${H * 0.98}`,   // bottom-left
-    `${W * 0.92},${H * 0.98}`,   // bottom-right
-    `${W * 0.72},${H * 0.44}`,   // top-right (near pitcher)
-    `${W * 0.28},${H * 0.44}`,   // top-left
+    `${W * 0.08},${H * 0.98}`, 
+    `${W * 0.92},${H * 0.98}`,   
+    `${W * 0.72},${H * 0.44}`,  
+    `${W * 0.28},${H * 0.44}`,   
   ].join(' ');
 
   const homeX  = W * 0.50;  const homeY  = H * 0.87;
@@ -130,7 +130,6 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
         <Rect x={W * 0.10}  y={horizon - H * 0.14} width={2} height={2} />
         <Rect x={W * 0.20}  y={horizon - H * 0.15} width={2} height={2} />
         <Rect x={W * 0.22}  y={horizon - H * 0.12} width={2} height={2} />
-        {/* Right buildings windows */}
         <Rect x={W * 0.80}  y={horizon - H * 0.15} width={2} height={2} />
         <Rect x={W * 0.82}  y={horizon - H * 0.12} width={2} height={2} />
         <Rect x={W * 0.87}  y={horizon - H * 0.13} width={2} height={2} />
