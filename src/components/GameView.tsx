@@ -19,7 +19,6 @@ import Svg, {
   Rect,
 } from 'react-native-svg';
 
-import StadiumBackground from './StadiumBackground';
 import { GameStage, PitchType, SwingResultReason } from '../types/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BaseballBat, {
@@ -36,16 +35,7 @@ import BaseballBat, {
 const { width, height } = Dimensions.get('window');
 
 const CANVAS_WIDTH = width - 20;
-const CANVAS_HEIGHT = height * 0.62;
-
-const CROWD_DOTS: number[] = Array.from({ length: 80 }).map(
-  (_, i) => {
-    const base = 0.4 + (i % 10) * 0.03;
-    const jitter = (i * 9301 + 49297) % 1000; 
-    const j = (jitter / 1000) * 0.2;
-    return Math.min(1, base + j);
-  },
-);
+const CANVAS_HEIGHT = height * 0.50;
 
 
 interface Props {
@@ -223,11 +213,6 @@ export default function GameView({
     if (!triggerSwing) {
       return;
     }
-
-
-
-
-
     setTriggerSwing(false);
 
     if (stage !== GameStage.InFlight) {
@@ -791,18 +776,8 @@ export default function GameView({
 
   return (
     <SafeAreaView style={styles.wrapper}>
-      <StadiumBackground
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
-      />
 
-      {/* CROWD */}
 
-      <View style={styles.crowdRow}>
-        {CROWD_DOTS.map((opacity, i) => (
-          <View key={i} style={[styles.crowdDot, { opacity }]} />
-        ))}
-      </View>
 
 
       {/* GAME */}
@@ -937,23 +912,6 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 
-  crowdRow: {
-    position: 'absolute',
-    top: 140,
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 10,
-    gap: 6,
-    zIndex: 1,
-  },
-
-  crowdDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 10,
-    backgroundColor: '#fde68a',
-  },
 
   banner: {
     position: 'absolute',

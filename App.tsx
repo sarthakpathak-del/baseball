@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
+ StyleSheet,
   StatusBar,
   Modal,
   TouchableOpacity,
-  ScrollView,
   Vibration,
+  Dimensions,
 } from 'react-native';
+
 import {
   SafeAreaProvider,
   SafeAreaView,
@@ -24,8 +25,13 @@ import {
 import ScoreBoard from './src/components/ScoreBoard';
 import GameView from './src/components/GameView';
 import ControlPanel from './src/components/ControlPanel';
+import StadiumBackground from './src/components/StadiumBackground';
+
 import { useMicLevel } from './src/hooks/useMicLevel';
+
 import Sound from 'react-native-sound';
+
+const { width, height } = Dimensions.get('window');
 
 const INITIAL_STATS: GameStats = {
   score: 0,
@@ -51,21 +57,40 @@ const formatTime = (seconds: number) => {
 
 export default function App() {
   const [stats, setStats] = useState<GameStats>(INITIAL_STATS);
+
   const cheerSoundRef = useRef<Sound | null>(null);
 
-  const [stage, setStage] = useState<GameStage>(GameStage.PitcherWindup);
-  const [pitchType, setPitchType] = useState<PitchType>(PitchType.Fastball);
-  const [pitchSpeed, setPitchSpeed] = useState<number>(92);
+  const [stage, setStage] = useState<GameStage>(
+    GameStage.PitcherWindup,
+  );
 
-  const [announceText, setAnnounceText] = useState<string>('GET READY');
+  const [pitchType, setPitchType] =
+    useState<PitchType>(PitchType.Fastball);
 
-  const [triggerSwing, setTriggerSwing] = useState(false);
-  const [blowStrength, setBlowStrength] = useState(80);
-  const [micEnabled, setMicEnabled] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(GAME_DURATION_SECONDS);
-  const [showEndModal, setShowEndModal] = useState(false);
+  const [pitchSpeed, setPitchSpeed] =
+    useState<number>(92);
 
-  const handleBlowTriggered = (strength: number) => {
+  const [announceText, setAnnounceText] =
+    useState<string>('GET READY');
+
+  const [triggerSwing, setTriggerSwing] =
+    useState(false);
+
+  const [blowStrength, setBlowStrength] =
+    useState(80);
+
+  const [micEnabled, setMicEnabled] =
+    useState(false);
+
+  const [timeRemaining, setTimeRemaining] =
+    useState(GAME_DURATION_SECONDS);
+
+  const [showEndModal, setShowEndModal] =
+    useState(false);
+
+  const handleBlowTriggered = (
+    strength: number,
+  ) => {
     if (stage !== GameStage.InFlight) {
       return;
     }
@@ -87,7 +112,10 @@ export default function App() {
       Sound.MAIN_BUNDLE,
       (error: unknown) => {
         if (error) {
-          console.warn('Failed to load homerun cheer:', error);
+          console.warn(
+            'Failed to load homerun cheer:',
+            error,
+          );
         }
       },
     );
@@ -148,7 +176,9 @@ export default function App() {
     }
 
     const timer = setInterval(() => {
-      setTimeRemaining(prev => Math.max(0, prev - 1));
+      setTimeRemaining(prev =>
+        Math.max(0, prev - 1),
+      );
     }, 1000);
 
     return () => clearInterval(timer);
@@ -182,13 +212,16 @@ export default function App() {
           PitchType.Changeup,
         ];
 
-        const next = all[Math.floor(Math.random() * all.length)];
+        const next =
+          all[Math.floor(Math.random() * all.length)];
 
         setPitchType(next);
 
         if (next === PitchType.Fastball) {
           setPitchSpeed(98);
-        } else if (next === PitchType.Curveball) {
+        } else if (
+          next === PitchType.Curveball
+        ) {
           setPitchSpeed(82);
         } else {
           setPitchSpeed(75);
@@ -248,14 +281,19 @@ export default function App() {
     isHit: boolean,
     distance?: number,
     direction?: string,
-    reason: SwingResultReason = isHit ? 'hit' : 'miss',
+    reason: SwingResultReason = isHit
+      ? 'hit'
+      : 'miss',
   ) => {
     if (isHit && distance) {
       if (distance >= 400) {
         setStage(GameStage.ResultHomerun);
+
         playHomerunCheer();
 
-        setAnnounceText(`💥 HOMERUN • ${direction} • ${distance} FT`);
+        setAnnounceText(
+          `💥 HOMERUN • ${direction} • ${distance} FT`,
+        );
 
         setStats(prev => ({
           ...prev,
@@ -263,13 +301,19 @@ export default function App() {
           score: prev.score + 4,
           streak: prev.streak + 1,
           strikes: 0,
-          maxDistance: Math.max(prev.maxDistance, distance),
-          totalPitches: prev.totalPitches + 1,
+          maxDistance: Math.max(
+            prev.maxDistance,
+            distance,
+          ),
+          totalPitches:
+            prev.totalPitches + 1,
         }));
       } else {
         setStage(GameStage.ResultHit);
 
-        setAnnounceText(`⚾ ${direction} • ${distance} FT`);
+        setAnnounceText(
+          `⚾ ${direction} • ${distance} FT`,
+        );
 
         setStats(prev => ({
           ...prev,
@@ -277,41 +321,69 @@ export default function App() {
           score: prev.score + 1,
           streak: prev.streak + 1,
           strikes: 0,
-          maxDistance: Math.max(prev.maxDistance, distance),
-          totalPitches: prev.totalPitches + 1,
+          maxDistance: Math.max(
+            prev.maxDistance,
+            distance,
+          ),
+          totalPitches:
+            prev.totalPitches + 1,
         }));
       }
     } else if (reason === 'fieldedOut') {
       setStage(GameStage.ResultOut);
+
       setShowEndModal(true);
+
       vibrateOut();
 
-      setAnnounceText(`YOU ARE OUT • ${direction ?? 'FIELDER'}`);
+      setAnnounceText(
+        `YOU ARE OUT • ${
+          direction ?? 'FIELDER'
+        }`,
+      );
 
       setStats(prev => ({
         ...prev,
         strikes: 0,
         streak: 0,
-        totalPitches: prev.totalPitches + 1,
+        totalPitches:
+          prev.totalPitches + 1,
       }));
     } else {
-      const nextStrikes = stats.strikes + 1;
-      const isStrikeout = nextStrikes >= 3;
+      const nextStrikes =
+        stats.strikes + 1;
 
-      setStage(isStrikeout ? GameStage.ResultOut : GameStage.ResultStrike);
+      const isStrikeout =
+        nextStrikes >= 3;
+
+      setStage(
+        isStrikeout
+          ? GameStage.ResultOut
+          : GameStage.ResultStrike,
+      );
+
       setShowEndModal(isStrikeout);
+
       if (isStrikeout) {
         vibrateOut();
       } else {
         vibrateStrike();
       }
-      setAnnounceText(isStrikeout ? 'YOU ARE OUT' : `❌ STRIKE ${nextStrikes}`);
+
+      setAnnounceText(
+        isStrikeout
+          ? 'YOU ARE OUT'
+          : `❌ STRIKE ${nextStrikes}`,
+      );
 
       setStats(prev => ({
         ...prev,
-        strikes: isStrikeout ? 0 : nextStrikes,
+        strikes: isStrikeout
+          ? 0
+          : nextStrikes,
         streak: 0,
-        totalPitches: prev.totalPitches + 1,
+        totalPitches:
+          prev.totalPitches + 1,
       }));
     }
   };
@@ -322,23 +394,24 @@ export default function App() {
         edges={['top', 'right', 'bottom', 'left']}
         style={styles.root}
       >
-        <StatusBar barStyle="light-content" backgroundColor="#020617" />
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="black"
+        />
 
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>MICRO SWING</Text>
-            <Text style={styles.sub}>ARCADE BASEBALL</Text>
-          </View>
+        <StadiumBackground
+          width={width}
+          height={height}
+        />
 
+        <View style={styles.overlay}>
           <ScoreBoard
             stats={stats}
             pitchType={pitchType}
             pitchSpeed={pitchSpeed}
-            timeText={formatTime(timeRemaining)}
+            timeText={formatTime(
+              timeRemaining,
+            )}
           />
 
           <GameView
@@ -347,19 +420,32 @@ export default function App() {
             pitchSpeed={pitchSpeed}
             announceText={announceText}
             triggerSwing={triggerSwing}
-            setTriggerSwing={setTriggerSwing}
+            setTriggerSwing={
+              setTriggerSwing
+            }
             blowStrength={blowStrength}
-            onSwingResult={handleSwingResult}
+            onSwingResult={
+              handleSwingResult
+            }
           />
 
           <ControlPanel
             micEnabled={micEnabled}
-            setMicEnabled={setMicEnabled}
-            hasMicPermission={hasPermission}
-            onManualSwing={handleManualSwing}
-            canSwing={stage === GameStage.InFlight}
+            setMicEnabled={
+              setMicEnabled
+            }
+            hasMicPermission={
+              hasPermission
+            }
+            onManualSwing={
+              handleManualSwing
+            }
+            canSwing={
+              stage ===
+              GameStage.InFlight
+            }
           />
-        </ScrollView>
+        </View>
 
         <Modal
           visible={showEndModal}
@@ -369,28 +455,51 @@ export default function App() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>
-                {stage === GameStage.ResultOut ? 'YOU ARE OUT' : 'GAME OVER'}
+                {stage ===
+                GameStage.ResultOut
+                  ? 'YOU ARE OUT'
+                  : 'GAME OVER'}
               </Text>
+
               <Text style={styles.modalSub}>
-                Score {stats.score} • Pitches {stats.totalPitches} • Time{' '}
-                {formatTime(timeRemaining)}
+                Score {stats.score} •
+                Pitches{' '}
+                {stats.totalPitches}
               </Text>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handleExitGame}
-                  style={[styles.modalButton, styles.exitButton]}
+                  style={[
+                    styles.modalButton,
+                    styles.exitButton,
+                  ]}
                 >
-                  <Text style={styles.exitButtonText}>EXIT</Text>
+                  <Text
+                    style={
+                      styles.exitButtonText
+                    }
+                  >
+                    EXIT
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handlePlayAgain}
-                  style={[styles.modalButton, styles.playButton]}
+                  style={[
+                    styles.modalButton,
+                    styles.playButton,
+                  ]}
                 >
-                  <Text style={styles.playButtonText}>PLAY AGAIN</Text>
+                  <Text
+                    style={
+                      styles.playButtonText
+                    }
+                  >
+                    PLAY AGAIN
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -404,39 +513,44 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: 'black',
   },
-  scroll: {
+
+  overlay: {
     flex: 1,
-    width: '100%',
-  },
-  content: {
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 10,
+    paddingTop: 6,
     paddingBottom: 12,
   },
-  header: {
-    alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  title: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 22,
-  },
-  sub: {
-    color: '#64748b',
-    fontSize: 10,
-    marginTop: 3,
-  },
+
+  // header: {
+  //   alignItems: 'center',
+  //   marginTop: 4,
+  // },
+
+  // title: {
+  //   color: 'white',
+  //   fontWeight: 'bold',
+  //   fontSize: 22,
+  // },
+
+  // sub: {
+  //   color: '#cbd5e1',
+  //   fontSize: 10,
+  //   marginTop: 3,
+  // },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(2,6,23,0.78)',
+    backgroundColor:
+      'rgba(2,6,23,0.78)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+
   modalCard: {
     width: '100%',
     maxWidth: 340,
@@ -447,23 +561,26 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
+
   modalTitle: {
     color: '#ffffff',
     fontSize: 26,
     fontWeight: 'bold',
-    letterSpacing: 1,
   },
+
   modalSub: {
     color: '#94a3b8',
     fontSize: 13,
     marginTop: 8,
     marginBottom: 18,
   },
+
   modalActions: {
     width: '100%',
     flexDirection: 'row',
     gap: 10,
   },
+
   modalButton: {
     flex: 1,
     minHeight: 46,
@@ -471,19 +588,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   exitButton: {
     borderColor: '#64748b',
     borderWidth: 1,
     backgroundColor: 'transparent',
   },
+
   playButton: {
     backgroundColor: '#22c55e',
   },
+
   exitButtonText: {
     color: '#cbd5e1',
     fontWeight: 'bold',
     fontSize: 13,
   },
+
   playButtonText: {
     color: '#052e16',
     fontWeight: 'bold',

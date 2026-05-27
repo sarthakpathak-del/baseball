@@ -8,12 +8,21 @@ interface StadiumBackgroundProps {
   height: number;
 }
 
-export default function StadiumBackground({ width, height }: StadiumBackgroundProps) {
+export default function StadiumBackground({
+  width,
+  height,
+}: StadiumBackgroundProps) {
   return (
     <Image
       source={stadiumImage}
-      style={[styles.background, { width, height }]}
-      resizeMode="cover"
+      style={[
+        styles.background,
+        {
+          width,
+          height,
+        },
+      ]}
+      resizeMode="stretch"
     />
   );
 }

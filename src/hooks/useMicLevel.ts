@@ -57,16 +57,14 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
       return;
     }
 
-    // Lower latency blow detection: peak window + adaptive noise floor.
     const COOLDOWN_MS = 300;
-    const ABS_THRESHOLD_DB = -28; // easier for "blow" than -20
-    const RISE_THRESHOLD_DB = 10; // trigger when above noise floor by this delta
+    const ABS_THRESHOLD_DB = -28; 
+    const RISE_THRESHOLD_DB = 10; 
 
     let noiseFloorDb = -45;
     let lastTriggerTime = 0;
     let isListening = true;
 
-    // track a tiny burst window (react-native-sound-level frame rate varies)
     let windowMaxDb = -Infinity;
     let windowStartTs = Date.now();
     const WINDOW_MS = 220;
@@ -82,12 +80,10 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
 
       const now = Date.now();
 
-      // Update noise floor (EMA). Smaller alpha = smoother, slower adaptation.
       const alpha = decibel < noiseFloorDb ? 0.06 : 0.02;
       noiseFloorDb =
         noiseFloorDb + (decibel - noiseFloorDb) * alpha;
 
-      // Update peak window
       if (now - windowStartTs > WINDOW_MS) {
         windowStartTs = now;
         windowMaxDb = decibel;
@@ -98,7 +94,6 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
       const aboveNoise = windowMaxDb - noiseFloorDb >= RISE_THRESHOLD_DB;
       const aboveAbs = decibel >= ABS_THRESHOLD_DB;
 
-      // Trigger on a peak (fast), then cooldown prevents double-triggers.
       if ((aboveNoise || aboveAbs) && now - lastTriggerTime > COOLDOWN_MS) {
         const levelPercent = Math.min(
           100,
@@ -108,7 +103,6 @@ export function useMicLevel({ enabled, onBlowTriggered }: UseMicLevelProps) {
         onBlowTriggered(levelPercent);
         lastTriggerTime = now;
 
-        // reset window so the next blow isn't delayed by stale peak
         windowStartTs = now;
         windowMaxDb = -Infinity;
       }
