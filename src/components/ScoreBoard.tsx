@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
 import { GameStats, PitchType } from '../types/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,61 +10,41 @@ interface Props {
   timeText: string;
 }
 
-export default function ScoreBoard({
-  stats,
-  pitchType,
-  pitchSpeed,
-  timeText,
-}: Props) {
+export default function ScoreBoard({ stats }: Props) {
   return (
     <SafeAreaView style={styles.container}>
-      <Stat label="SCORE" value={stats.score} emphasis />
-
-      <View style={styles.pitchBox}>
-        <Text style={styles.pitchSpeed}>{pitchSpeed}</Text>
-        <Text style={styles.pitchType}>{pitchType}</Text>
+      <View style={styles.leftIcon}>
+        <Text style={styles.icon}>⚾</Text>
       </View>
 
-      <Stat label="STRIKES" value={`${stats.strikes}/3`} />
-      <Stat label="TIME" value={timeText} warning />
-    </SafeAreaView>
-  );
-}
+      <View style={styles.scoreWrap}>
+        <Text style={styles.score}>{stats.home} - {stats.away}</Text>
+      </View>
 
-function Stat({
-  label,
-  value,
-  emphasis,
-  warning,
-}: {
-  label: string;
-  value: string | number;
-  emphasis?: boolean;
-  warning?: boolean;
-}) {
-  return (
-    <View style={styles.stat}>
-      <Text
-        style={[
-          styles.value,
-          emphasis && styles.valueEmphasis,
-          warning && styles.valueWarning,
-        ]}
-      >
-        {value}
-      </Text>
-      <Text style={styles.label}>{label}</Text>
-    </View>
+      <View style={styles.rightWrap}>
+        <Text style={styles.smallLabel}>INNING</Text>
+        <View style={styles.inningRow}>
+          <View style={styles.pill}><Text style={styles.pillText}>TOP 9</Text></View>
+          <Text style={styles.gear}>⚙️</Text>
+        </View>
+        <View style={styles.dotsRow}>
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     width: '95%',
+    alignSelf: 'center',
     backgroundColor: 'rgba(15,23,42,0.95)',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: '#1e293b',
     marginBottom: 10,
@@ -73,36 +52,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  stat: {
+  leftIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#0ea5b7',
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    marginRight: 6,
   },
-  value: {
-    color: 'white',
-    fontWeight: 'bold',
+  icon: {
     fontSize: 18,
   },
-  valueEmphasis: {
-    fontSize: 22,
-  },
-  valueWarning: {
-    color: '#facc15',
-  },
-  label: {
-    color: '#64748b',
-    fontSize: 10,
-  },
-  pitchBox: {
+  scoreWrap: {
     flex: 1,
     alignItems: 'center',
   },
-  pitchSpeed: {
-    color: '#facc15',
-    fontSize: 20,
-    fontWeight: 'bold',
+  score: {
+    color: 'white',
+    fontWeight: '800',
+    fontSize: 36,
   },
-  pitchType: {
-    color: '#cbd5e1',
+  rightWrap: {
+    width: 140,
+    alignItems: 'flex-end',
+  },
+  smallLabel: {
+    color: '#94a3b8',
     fontSize: 10,
+    marginBottom: 6,
+  },
+  inningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pill: {
+    backgroundColor: '#16a34a',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  pillText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  gear: {
+    fontSize: 18,
+    marginLeft: 6,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#334155',
+  },
+  dotActive: {
+    backgroundColor: '#fda4af',
   },
 });

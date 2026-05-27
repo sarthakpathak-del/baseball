@@ -38,12 +38,11 @@ const { width, height } = Dimensions.get('window');
 const CANVAS_WIDTH = width - 20;
 const CANVAS_HEIGHT = height * 0.62;
 
-// Precompute crowd opacities once so they don't flicker on re-renders.
 const CROWD_DOTS: number[] = Array.from({ length: 80 }).map(
   (_, i) => {
     const base = 0.4 + (i % 10) * 0.03;
-    const jitter = (i * 9301 + 49297) % 1000; // cheap hash
-    const j = (jitter / 1000) * 0.2; // 0..0.2
+    const jitter = (i * 9301 + 49297) % 1000; 
+    const j = (jitter / 1000) * 0.2;
     return Math.min(1, base + j);
   },
 );
@@ -600,9 +599,6 @@ export default function GameView({
     }, 2500);
   };
 
-  // =========================
-  // BALL ANIMATIONS
-  // =========================
 
   const animateGroundBall = (
     direction: string,
@@ -936,8 +932,9 @@ const styles = StyleSheet.create({
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
     borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#020617',
+    overflow: "hidden",
+    alignSelf: "center",
+    backgroundColor: "transparent",
   },
 
   crowdRow: {
@@ -960,7 +957,7 @@ const styles = StyleSheet.create({
 
   banner: {
     position: 'absolute',
-    bottom: 16,
+    top: 16,
     left: 12,
     right: 12,
     backgroundColor:
