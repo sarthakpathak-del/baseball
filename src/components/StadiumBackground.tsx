@@ -7,8 +7,8 @@ import Svg, {
   Rect,
   Ellipse,
   Path,
-  Circle,
   G,
+
   Polygon,
 } from 'react-native-svg';
 
@@ -22,8 +22,8 @@ export default function StadiumBackground({ width, height }: StadiumBackgroundPr
   const H = height;
 
   const horizon = H * 0.40;
-  const grassStart = horizon;
-  const vp = { x: W * 0.5, y: H * 0.38 };
+  // grassStart and vp were previously used in an alternate geometry version.
+  // They are intentionally removed to satisfy linting.
 
   const fieldLeft  = -W * 0.1;
   const fieldRight = W * 1.1;

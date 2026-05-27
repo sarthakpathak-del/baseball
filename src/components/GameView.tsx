@@ -38,6 +38,17 @@ const { width, height } = Dimensions.get('window');
 const CANVAS_WIDTH = width - 20;
 const CANVAS_HEIGHT = height * 0.62;
 
+// Precompute crowd opacities once so they don't flicker on re-renders.
+const CROWD_DOTS: number[] = Array.from({ length: 80 }).map(
+  (_, i) => {
+    const base = 0.4 + (i % 10) * 0.03;
+    const jitter = (i * 9301 + 49297) % 1000; // cheap hash
+    const j = (jitter / 1000) * 0.2; // 0..0.2
+    return Math.min(1, base + j);
+  },
+);
+
+
 interface Props {
   stage: GameStage;
   pitchType: PitchType;
@@ -118,7 +129,9 @@ export default function GameView({
       return;
     }
 
+
     setBallVisible(true);
+
     swingResolved.current = false;
 
     pitchProgress.setValue(0);
@@ -142,6 +155,9 @@ export default function GameView({
   useEffect(() => {
     const id = pitchProgress.addListener(
       ({ value }) => {
+
+
+
         let curve = 0;
 
         if (
@@ -208,6 +224,10 @@ export default function GameView({
     if (!triggerSwing) {
       return;
     }
+
+
+
+
 
     setTriggerSwing(false);
 
@@ -500,7 +520,7 @@ export default function GameView({
     if (power <= 0.38) {
       const result = getFieldingResult('groundBall', power);
 
-      animateGroundBall(direction);
+      animateGroundBall(direction, power);
 
       setTimeout(() => {
         if (result.isOut) {
@@ -516,7 +536,7 @@ export default function GameView({
     if (power <= 0.55) {
       const result = getFieldingResult('popup', power);
 
-      animatePopup(direction);
+      animatePopup(direction, power);
 
       setTimeout(() => {
         if (result.isOut) {
@@ -534,7 +554,7 @@ export default function GameView({
         180 +
         Math.floor(power * 140);
 
-      animateLineDrive(direction);
+      animateLineDrive(direction, power);
 
       setTimeout(() => {
         onSwingResult(
@@ -552,7 +572,7 @@ export default function GameView({
         320 +
         Math.floor(power * 100);
 
-      animateDeepFly(direction);
+      animateDeepFly(direction, power);
 
       setTimeout(() => {
         onSwingResult(
@@ -569,7 +589,7 @@ export default function GameView({
       420 +
       Math.floor(Math.random() * 60);
 
-    animateHomerun(direction);
+    animateHomerun(direction, power);
 
     setTimeout(() => {
       onSwingResult(
@@ -586,6 +606,7 @@ export default function GameView({
 
   const animateGroundBall = (
     direction: string,
+    power: number,
   ) => {
     let x = ballX;
     let y = ballY;
@@ -593,21 +614,20 @@ export default function GameView({
     const targetX =
       direction === 'LEFT FIELD'
         ? 90
-        : direction ===
-          'RIGHT FIELD'
+        : direction === 'RIGHT FIELD'
         ? CANVAS_WIDTH - 90
         : CANVAS_WIDTH / 2;
 
-    const interval = setInterval(() => {
-      x += (targetX - x) * 0.08;
+    const lerpFactor = 0.08 + power * 0.06;
 
-      y -= 1;
+    const interval = setInterval(() => {
+      x += (targetX - x) * lerpFactor;
+
+      y -= 1 + power * 2;
 
       setHitBall({ x, y });
 
-      if (
-        Math.abs(targetX - x) < 4
-      ) {
+      if (Math.abs(targetX - x) < 4) {
         clearInterval(interval);
 
         setTimeout(() => {
@@ -619,6 +639,7 @@ export default function GameView({
 
   const animatePopup = (
     direction: string,
+    power: number,
   ) => {
     let x = ballX;
     let y = ballY;
@@ -626,17 +647,16 @@ export default function GameView({
     const targetX =
       direction === 'LEFT FIELD'
         ? 120
-        : direction ===
-          'RIGHT FIELD'
+        : direction === 'RIGHT FIELD'
         ? CANVAS_WIDTH - 120
         : CANVAS_WIDTH / 2;
 
-    let velocity = -13;
+    let velocity = -13 * (1 + power);
 
-    const gravity = 0.65;
+    const gravity = Math.max(0.25, 0.65 * (1 - power * 0.4));
 
     const interval = setInterval(() => {
-      x += (targetX - x) * 0.03;
+      x += (targetX - x) * (0.03 + power * 0.02);
 
       velocity += gravity;
 
@@ -656,6 +676,7 @@ export default function GameView({
 
   const animateLineDrive = (
     direction: string,
+    power: number,
   ) => {
     let x = ballX;
     let y = ballY;
@@ -663,15 +684,14 @@ export default function GameView({
     const targetX =
       direction === 'LEFT FIELD'
         ? 70
-        : direction ===
-          'RIGHT FIELD'
+        : direction === 'RIGHT FIELD'
         ? CANVAS_WIDTH - 70
         : CANVAS_WIDTH / 2;
 
     const interval = setInterval(() => {
-      x += (targetX - x) * 0.05;
+      x += (targetX - x) * (0.05 + power * 0.04);
 
-      y -= 4.5;
+      y -= 4.5 * (1 + power);
 
       setHitBall({ x, y });
 
@@ -687,6 +707,7 @@ export default function GameView({
 
   const animateDeepFly = (
     direction: string,
+    power: number,
   ) => {
     let x = ballX;
     let y = ballY;
@@ -694,17 +715,16 @@ export default function GameView({
     const targetX =
       direction === 'LEFT FIELD'
         ? 40
-        : direction ===
-          'RIGHT FIELD'
+        : direction === 'RIGHT FIELD'
         ? CANVAS_WIDTH - 40
         : CANVAS_WIDTH / 2;
 
-    let velocity = -18;
+    let velocity = -18 * (1 + power);
 
-    const gravity = 0.45;
+    const gravity = Math.max(0.18, 0.45 * (1 - power * 0.35));
 
     const interval = setInterval(() => {
-      x += (targetX - x) * 0.04;
+      x += (targetX - x) * (0.04 + power * 0.03);
 
       velocity += gravity;
 
@@ -712,10 +732,7 @@ export default function GameView({
 
       setHitBall({ x, y });
 
-      if (
-        y > 100 &&
-        velocity > 0
-      ) {
+      if (y > 100 && velocity > 0) {
         clearInterval(interval);
 
         setTimeout(() => {
@@ -727,6 +744,7 @@ export default function GameView({
 
   const animateHomerun = (
     direction: string,
+    power: number,
   ) => {
     let x = ballX;
     let y = ballY;
@@ -734,17 +752,16 @@ export default function GameView({
     const targetX =
       direction === 'LEFT FIELD'
         ? 20
-        : direction ===
-          'RIGHT FIELD'
+        : direction === 'RIGHT FIELD'
         ? CANVAS_WIDTH - 20
         : CANVAS_WIDTH / 2;
 
-    let velocity = -22;
+    let velocity = -22 * (1 + power);
 
-    const gravity = 0.32;
+    const gravity = Math.max(0.12, 0.32 * (1 - power * 0.35));
 
     const interval = setInterval(() => {
-      x += (targetX - x) * 0.035;
+      x += (targetX - x) * (0.035 + power * 0.03);
 
       velocity += gravity;
 
@@ -786,22 +803,11 @@ export default function GameView({
       {/* CROWD */}
 
       <View style={styles.crowdRow}>
-        {Array.from({ length: 80 }).map(
-          (_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.crowdDot,
-                {
-                  opacity:
-                    0.4 +
-                    Math.random() * 0.6,
-                },
-              ]}
-            />
-          ),
-        )}
+        {CROWD_DOTS.map((opacity, i) => (
+          <View key={i} style={[styles.crowdDot, { opacity }]} />
+        ))}
       </View>
+
 
       {/* GAME */}
 
