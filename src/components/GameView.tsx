@@ -31,11 +31,12 @@ import BaseballBat, {
   BAT_SWING_OFFSET_X,
   BAT_SWING_OFFSET_Y,
 } from '../Assests/BaseballBat';
+import Batter from './Batter'; // ← NEW
 
 const { width, height } = Dimensions.get('window');
 
 const CANVAS_WIDTH = width - 20;
-const CANVAS_HEIGHT = height * 0.50;
+const CANVAS_HEIGHT = height * 0.62;
 
 
 interface Props {
@@ -77,7 +78,6 @@ export default function GameView({
   onSwingResult,
 }: Props) {
 
-
   const pitchProgress = useRef(
     new Animated.Value(0),
   ).current;
@@ -118,7 +118,6 @@ export default function GameView({
       return;
     }
 
-
     setBallVisible(true);
 
     swingResolved.current = false;
@@ -144,8 +143,6 @@ export default function GameView({
   useEffect(() => {
     const id = pitchProgress.addListener(
       ({ value }) => {
-
-
 
         let curve = 0;
 
@@ -248,8 +245,6 @@ export default function GameView({
       swingActive.current = false;
     });
   }, [stage, triggerSwing]);
-
-
 
   const rotatePoint = (
     pointX: number,
@@ -584,7 +579,6 @@ export default function GameView({
     }, 2500);
   };
 
-
   const animateGroundBall = (
     direction: string,
     power: number,
@@ -767,7 +761,6 @@ export default function GameView({
   const batRotate =
     batSwing.interpolate({
       inputRange: [0, 1],
-
       outputRange: [
         '-3deg',
         '-111deg',
@@ -776,9 +769,6 @@ export default function GameView({
 
   return (
     <SafeAreaView style={styles.wrapper}>
-
-
-
 
       {/* GAME */}
 
@@ -827,27 +817,9 @@ export default function GameView({
           />
         </G>
 
-        {/* BATTER */}
+        {/* ← BATTER <G> REMOVED — now rendered by <Batter> below */}
 
-        <G>
-          <Circle
-            cx={plateX - 26}
-            cy={plateY - 48}
-            r={10}
-            fill="#f8c9a0"
-          />
-
-          <Rect
-            x={plateX - 38}
-            y={plateY - 38}
-            width={24}
-            height={40}
-            rx={6}
-            fill="#0284c7"
-          />
-        </G>
-
-        {/* STRIKE ZONE */}
+        {/* STRIKE ZONE — kept here so it renders under the ball */}
 
         <Rect
           x={plateX - 18}
@@ -882,14 +854,22 @@ export default function GameView({
         )}
       </Svg>
 
-      {/* BAT */}
+      {/* NEW BATTER COMPONENT */}
 
-      <BaseballBat
+    <Batter
+  plateX={plateX}
+  plateY={plateY}
+  batSwing={batSwing} 
+/>
+
+      {/* BAT (existing swing overlay — keep as-is for hit detection alignment) */}
+
+      {/* <BaseballBat
         plateX={plateX}
         plateY={plateY}
         batSwing={batSwing}
         batRotate={batRotate}
-      />
+      /> */}
 
       {/* BANNER */}
 
@@ -907,19 +887,17 @@ const styles = StyleSheet.create({
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
     borderRadius: 20,
-    overflow: "hidden",
-    alignSelf: "center",
-    backgroundColor: "transparent",
+    overflow: 'hidden',
+    alignSelf: 'center',
+    backgroundColor: 'transparent',
   },
-
 
   banner: {
     position: 'absolute',
     top: 16,
     left: 12,
     right: 12,
-    backgroundColor:
-      'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',

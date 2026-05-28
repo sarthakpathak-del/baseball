@@ -6,16 +6,12 @@ interface ControlPanelProps {
   micEnabled: boolean;
   setMicEnabled: (val: boolean) => void;
   hasMicPermission: boolean;
-  onManualSwing: () => void;
-  canSwing: boolean;
 }
 
 export default function ControlPanel({
   micEnabled,
   setMicEnabled,
   hasMicPermission,
-  onManualSwing,
-  canSwing,
 }: ControlPanelProps) {
   return (
     <SafeAreaView style={styles.container}>
@@ -59,21 +55,6 @@ export default function ControlPanel({
           </Text>
         </View>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        id="btn-big-swing"
-        onPress={onManualSwing}
-        disabled={!canSwing}
-        activeOpacity={0.8}
-        style={[
-          styles.swingBtn,
-          !canSwing && styles.swingBtnDisabled,
-        ]}
-      >
-        <Text style={styles.swingBtnText}>
-          {canSwing ? '🔥 BIG SWING!' : 'WAIT FOR PITCH'}
-        </Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -108,22 +89,5 @@ const styles = StyleSheet.create({
   micStatus: {
     fontWeight: 'bold',
     fontSize: 12,
-  },
-  swingBtn: {
-    width: '100%',
-    maxWidth: 300,
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  swingBtnDisabled: {
-    backgroundColor: '#475569',
-    opacity: 0.65,
-  },
-  swingBtnText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+  }
 });

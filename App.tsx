@@ -525,22 +525,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
 
-  // header: {
-  //   alignItems: 'center',
-  //   marginTop: 4,
-  // },
 
-  // title: {
-  //   color: 'white',
-  //   fontWeight: 'bold',
-  //   fontSize: 22,
-  // },
-
-  // sub: {
-  //   color: '#cbd5e1',
-  //   fontSize: 10,
-  //   marginTop: 3,
-  // },
 
   modalOverlay: {
     flex: 1,
